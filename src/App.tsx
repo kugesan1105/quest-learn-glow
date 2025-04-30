@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
+import Tasks from "./pages/Tasks";
 import Task from "./pages/Task";
 import History from "./pages/History";
 import Calendar from "./pages/Calendar";
@@ -22,8 +23,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/task/:taskId" element={<Task />} />
-          <Route path="/task" element={<Dashboard />} /> {/* Redirect to dashboard */}
           <Route path="/history" element={<History />} />
           <Route path="/calendar" element={<Calendar />} />
           <Route path="*" element={<NotFound />} />

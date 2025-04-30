@@ -42,7 +42,7 @@ export function Navbar() {
     {
       icon: <FileText size={20} />,
       label: "Tasks",
-      path: "/task",
+      path: "/tasks",
     },
     {
       icon: <ListCheck size={20} />,
