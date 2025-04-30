@@ -26,7 +26,6 @@ export function ProgressTracker({
       <Progress
         value={progress}
         className="h-3 bg-purple-light"
-        indicatorClassName="bg-gradient-to-r from-purple to-blue"
       />
       <div className="flex justify-between mt-2">
         <div className="text-xs text-muted-foreground">

@@ -10,18 +10,47 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Lock } from "lucide-react";
+import { Lock, User } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Index() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [profileImage, setProfileImage] = useState<string | null>(null);
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, we'd validate and authenticate
     // For now, just navigate to the dashboard
+    localStorage.setItem("userEmail", email);
     navigate("/dashboard");
+  };
+
+  const handleSignup = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, we'd create the account
+    // For now, store the data in localStorage and navigate
+    localStorage.setItem("userName", name);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userProfileImage", profileImage || "");
+    navigate("/dashboard");
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setProfileImage(event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -54,41 +83,110 @@ export default function Index() {
 
             <Card className="shadow-lg">
               <CardHeader>
-                <CardTitle className="text-center">Login to Learn</CardTitle>
+                <CardTitle className="text-center">Welcome to EduQuest</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleLogin}>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Input
-                        type="email"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Input
-                        type="password"
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-                </form>
+                <Tabs defaultValue="login" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-4">
+                    <TabsTrigger value="login">Login</TabsTrigger>
+                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="login">
+                    <form onSubmit={handleLogin} className="space-y-4">
+                      <div className="space-y-2">
+                        <Input
+                          type="email"
+                          placeholder="Email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          type="password"
+                          placeholder="Password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <Button 
+                        className="w-full btn-gradient" 
+                        size="lg"
+                        type="submit"
+                      >
+                        Login to Learn
+                      </Button>
+                    </form>
+                  </TabsContent>
+                  
+                  <TabsContent value="signup">
+                    <form onSubmit={handleSignup} className="space-y-4">
+                      <div className="flex flex-col items-center mb-4">
+                        <div className="relative group cursor-pointer mb-2">
+                          <Avatar className="h-20 w-20 border-4 border-purple-light">
+                            {profileImage ? (
+                              <AvatarImage src={profileImage} alt="Profile" />
+                            ) : (
+                              <AvatarFallback className="bg-gradient-main text-white">
+                                <User size={30} />
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                            <span className="text-white text-xs">Change</span>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="absolute inset-0 opacity-0 cursor-pointer" 
+                            onChange={handleImageUpload}
+                          />
+                        </div>
+                        <Label htmlFor="profile-image" className="text-sm text-muted-foreground">
+                          Profile Picture
+                        </Label>
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          type="text"
+                          placeholder="Full Name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          type="email"
+                          placeholder="Email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Input
+                          type="password"
+                          placeholder="Password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <Button 
+                        className="w-full btn-gradient" 
+                        size="lg"
+                        type="submit"
+                      >
+                        Create Account
+                      </Button>
+                    </form>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full btn-gradient" 
-                  size="lg"
-                  onClick={handleLogin}
-                >
-                  Login to Learn
-                </Button>
-              </CardFooter>
             </Card>
           </div>
         </div>

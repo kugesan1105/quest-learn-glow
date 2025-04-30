@@ -1,13 +1,26 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { TaskCard, Task } from "@/components/TaskCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { User } from "lucide-react";
 
 export default function Dashboard() {
+  const [userName, setUserName] = useState<string>("Student");
+  const [userProfileImage, setUserProfileImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Get user data from localStorage
+    const name = localStorage.getItem("userName");
+    const image = localStorage.getItem("userProfileImage");
+    
+    if (name) setUserName(name);
+    if (image) setUserProfileImage(image);
+  }, []);
+
   const [tasks] = useState<Task[]>([
     {
       id: 1,
@@ -83,11 +96,16 @@ export default function Dashboard() {
               <CardHeader className="pb-3">
                 <div className="flex items-center space-x-4">
                   <Avatar className="h-16 w-16 border-4 border-purple-light">
-                    <AvatarImage src="https://github.com/shadcn.png" alt="Student" />
-                    <AvatarFallback className="bg-gradient-main text-white">SC</AvatarFallback>
+                    {userProfileImage ? (
+                      <AvatarImage src={userProfileImage} alt={userName} />
+                    ) : (
+                      <AvatarFallback className="bg-gradient-main text-white">
+                        {userName.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <div>
-                    <h2 className="text-2xl font-bold">Hi, Student!</h2>
+                    <h2 className="text-2xl font-bold">Hi, {userName}!</h2>
                     <p className="text-muted-foreground">Welcome back to your learning journey</p>
                   </div>
                 </div>
