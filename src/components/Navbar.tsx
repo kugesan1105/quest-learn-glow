@@ -1,7 +1,7 @@
 
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileText, Home, ListCheck } from 'lucide-react';
+import { Calendar, FileText, Home, ListCheck, Users, PlusCircle, CheckSquare } from 'lucide-react';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -30,10 +30,11 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const isLoggedIn = location.pathname !== '/';
+  const isTeacher = location.pathname.includes('/teacher');
 
   if (!isLoggedIn) return null;
 
-  const navItems = [
+  const studentNavItems = [
     {
       icon: <Home size={20} />,
       label: "Dashboard",
@@ -55,6 +56,31 @@ export function Navbar() {
       path: "/calendar",
     },
   ];
+
+  const teacherNavItems = [
+    {
+      icon: <Home size={20} />,
+      label: "Dashboard",
+      path: "/teacher/dashboard",
+    },
+    {
+      icon: <FileText size={20} />,
+      label: "Manage Tasks",
+      path: "/teacher/tasks",
+    },
+    {
+      icon: <CheckSquare size={20} />,
+      label: "Submissions",
+      path: "/teacher/submissions",
+    },
+    {
+      icon: <Calendar size={20} />,
+      label: "Calendar",
+      path: "/calendar",
+    },
+  ];
+
+  const navItems = isTeacher ? teacherNavItems : studentNavItems;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 md:fixed md:top-0 md:left-0 md:h-screen md:w-20 lg:w-64 bg-white shadow-md z-10">
