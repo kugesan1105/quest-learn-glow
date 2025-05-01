@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,25 +20,76 @@ export default function Index() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(""); // Clear previous error message
+    try {
+      const res = await fetch("http://localhost:8000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        if (errorData && errorData.error) {
+          setErrorMessage(errorData.error);
+        } else {
+          setErrorMessage("Login failed");
+        }
+        return;
+      }
+
+      const data = await res.json();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("userEmail", email);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("Login error!");
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      console.log("name", name);
+      console.log("email", email);
+      console.log("password", password);
+      console.log("profileImage", profileImage);
+      const res = await fetch("http://localhost:8000/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          profileImage,
+        }),
+      });
   
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, we'd validate and authenticate
-    // For now, just navigate to the dashboard
-    localStorage.setItem("userEmail", email);
-    navigate("/dashboard");
+      if (!res.ok) {
+        throw new Error("Signup failed");
+      }
+  
+      const data = await res.json();
+      alert(data.message);
+      localStorage.setItem("userName", name);
+      localStorage.setItem("userEmail", email);
+      localStorage.setItem("userProfileImage", profileImage || "");
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert("Signup error!");
+    }
   };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, we'd create the account
-    // For now, store the data in localStorage and navigate
-    localStorage.setItem("userName", name);
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("userProfileImage", profileImage || "");
-    navigate("/dashboard");
-  };
-
+  
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -94,6 +144,9 @@ export default function Index() {
                   
                   <TabsContent value="login">
                     <form onSubmit={handleLogin} className="space-y-4">
+                      {errorMessage && (
+                        <div className="text-red-500 text-sm">{errorMessage}</div>
+                      )}
                       <div className="space-y-2">
                         <Input
                           type="email"
