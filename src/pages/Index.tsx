@@ -1,226 +1,285 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Lock, User } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileUpload } from '@/components/FileUpload';
+import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function Index() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const { login, signup } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   
-  const handleLogin = (e: React.FormEvent) => {
+  // Login state
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginRole, setLoginRole] = useState<'student' | 'teacher'>('student');
+  
+  // Register state
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [registerRole, setRegisterRole] = useState<'student' | 'teacher'>('student');
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, we'd validate and authenticate
-    // For now, just navigate to the dashboard
-    localStorage.setItem("userEmail", email);
-    navigate("/dashboard");
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, we'd create the account
-    // For now, store the data in localStorage and navigate
-    localStorage.setItem("userName", name);
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("userProfileImage", profileImage || "");
-    navigate("/dashboard");
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setProfileImage(event.target.result as string);
+    setIsLoading(true);
+    
+    try {
+      const success = await login(loginEmail, loginPassword, loginRole);
+      
+      if (success) {
+        toast({
+          title: 'Login successful',
+          description: `Welcome back, ${loginEmail}!`,
+        });
+        
+        // Navigate based on role
+        if (loginRole === 'teacher') {
+          navigate('/teacher/dashboard');
+        } else {
+          navigate('/dashboard');
         }
-      };
-      reader.readAsDataURL(file);
+      } else {
+        toast({
+          title: 'Login failed',
+          description: 'Invalid credentials. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Login error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
-
+  
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    if (!registerName || !registerEmail || !registerPassword) {
+      toast({
+        title: 'Registration failed',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      let profileImageDataUrl = null;
+      
+      if (profileImage) {
+        // Convert file to data URL for storage
+        const reader = new FileReader();
+        profileImageDataUrl = await new Promise<string>((resolve) => {
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(profileImage);
+        });
+      }
+      
+      const success = await signup(
+        registerName,
+        registerEmail,
+        registerPassword,
+        registerRole,
+        profileImageDataUrl || undefined
+      );
+      
+      if (success) {
+        toast({
+          title: 'Registration successful',
+          description: 'Your account has been created.',
+        });
+        
+        // Navigate based on role
+        if (registerRole === 'teacher') {
+          navigate('/teacher/dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      } else {
+        toast({
+          title: 'Registration failed',
+          description: 'This email may already be registered.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Registration error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleFileSelect = (file: File) => {
+    setProfileImage(file);
+  };
+  
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="hero-gradient py-6">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">E</span>
-              </div>
-              <span className="font-bold text-xl text-white">EduQuest</span>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-gradient-main rounded-xl flex items-center justify-center mb-4">
+            <span className="text-white font-bold text-2xl">E</span>
           </div>
+          <h1 className="text-3xl font-bold bg-gradient-main bg-clip-text text-transparent">EduQuest</h1>
+          <p className="text-muted-foreground text-center mt-2">Your interactive learning platform</p>
         </div>
-      </div>
-
-      <div className="flex-1 flex flex-col md:flex-row">
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-16">
-          <div className="max-w-md w-full">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold mb-4 bg-gradient-main bg-clip-text text-transparent">
-                Unlock Your Learning Journey
-              </h1>
-              <p className="text-muted-foreground">
-                Complete tasks to progress through your personalized learning path.
-                Each completed task will unlock new adventures in knowledge!
-              </p>
-            </div>
-
-            <Card className="shadow-lg">
+        
+        <Card className="w-full">
+          <Tabs defaultValue="login">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
               <CardHeader>
-                <CardTitle className="text-center">Welcome to EduQuest</CardTitle>
+                <CardTitle>Welcome back</CardTitle>
+                <CardDescription>Enter your credentials to access your account</CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="login" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="login">Login</TabsTrigger>
-                    <TabsTrigger value="signup">Sign Up</TabsTrigger>
-                  </TabsList>
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input 
+                      id="email" 
+                      type="email" 
+                      placeholder="your@email.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      required
+                    />
+                  </div>
                   
-                  <TabsContent value="login">
-                    <form onSubmit={handleLogin} className="space-y-4">
-                      <div className="space-y-2">
-                        <Input
-                          type="email"
-                          placeholder="Email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="password"
-                          placeholder="Password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <Button 
-                        className="w-full btn-gradient" 
-                        size="lg"
-                        type="submit"
-                      >
-                        Login to Learn
-                      </Button>
-                    </form>
-                  </TabsContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input 
+                      id="password" 
+                      type="password"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                    />
+                  </div>
                   
-                  <TabsContent value="signup">
-                    <form onSubmit={handleSignup} className="space-y-4">
-                      <div className="flex flex-col items-center mb-4">
-                        <div className="relative group cursor-pointer mb-2">
-                          <Avatar className="h-20 w-20 border-4 border-purple-light">
-                            {profileImage ? (
-                              <AvatarImage src={profileImage} alt="Profile" />
-                            ) : (
-                              <AvatarFallback className="bg-gradient-main text-white">
-                                <User size={30} />
-                              </AvatarFallback>
-                            )}
-                          </Avatar>
-                          <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                            <span className="text-white text-xs">Change</span>
-                          </div>
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="absolute inset-0 opacity-0 cursor-pointer" 
-                            onChange={handleImageUpload}
-                          />
-                        </div>
-                        <Label htmlFor="profile-image" className="text-sm text-muted-foreground">
-                          Profile Picture
-                        </Label>
+                  <div className="space-y-2">
+                    <Label>I am a</Label>
+                    <RadioGroup 
+                      defaultValue="student" 
+                      value={loginRole}
+                      onValueChange={(value) => setLoginRole(value as 'student' | 'teacher')}
+                      className="flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="student" id="student-login" />
+                        <Label htmlFor="student-login">Student</Label>
                       </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          placeholder="Full Name"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          required
-                        />
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="teacher" id="teacher-login" />
+                        <Label htmlFor="teacher-login">Teacher</Label>
                       </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="email"
-                          placeholder="Email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="password"
-                          placeholder="Password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <Button 
-                        className="w-full btn-gradient" 
-                        size="lg"
-                        type="submit"
-                      >
-                        Create Account
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
+                    </RadioGroup>
+                  </div>
+                  
+                  <Button type="submit" className="w-full bg-gradient-main" disabled={isLoading}>
+                    {isLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+                </form>
               </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <div className="hidden md:flex md:w-1/2 bg-gradient-main items-center justify-center p-16">
-          <div className="text-center text-white">
-            <div className="mb-8 transform -rotate-6">
-              <div className="w-24 h-24 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                <Lock size={48} className="text-white" />
-              </div>
-              <p className="text-lg font-semibold">Begin Your Learning Quest</p>
-            </div>
+            </TabsContent>
             
-            <div className="mb-8 transform rotate-6">
-              <div className="w-24 h-24 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-              </div>
-              <p className="text-lg font-semibold">Track Your Progress</p>
-            </div>
-            
-            <div className="transform -rotate-3">
-              <div className="w-24 h-24 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-              </div>
-              <p className="text-lg font-semibold">Complete Challenges</p>
-            </div>
-          </div>
-        </div>
+            <TabsContent value="register">
+              <CardHeader>
+                <CardTitle>Create an account</CardTitle>
+                <CardDescription>Enter your details to create your account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input 
+                      id="name" 
+                      placeholder="John Doe"
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email</Label>
+                    <Input 
+                      id="register-email" 
+                      type="email" 
+                      placeholder="your@email.com"
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Password</Label>
+                    <Input 
+                      id="register-password" 
+                      type="password"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>I am a</Label>
+                    <RadioGroup 
+                      defaultValue="student" 
+                      value={registerRole}
+                      onValueChange={(value) => setRegisterRole(value as 'student' | 'teacher')}
+                      className="flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="student" id="student-register" />
+                        <Label htmlFor="student-register">Student</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="teacher" id="teacher-register" />
+                        <Label htmlFor="teacher-register">Teacher</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Profile Picture (optional)</Label>
+                    <FileUpload onFileSelect={handleFileSelect} />
+                  </div>
+                  
+                  <Button type="submit" className="w-full bg-gradient-main" disabled={isLoading}>
+                    {isLoading ? 'Creating account...' : 'Create Account'}
+                  </Button>
+                </form>
+              </CardContent>
+            </TabsContent>
+          </Tabs>
+        </Card>
       </div>
     </div>
   );
