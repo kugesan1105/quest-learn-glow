@@ -28,21 +28,28 @@ export default function Index() {
   const [registerRole, setRegisterRole] = useState<'student' | 'teacher'>('student');
   const [profileImage, setProfileImage] = useState<File | null>(null);
   
+  const isTeacherEmail = (email: string) => {
+    return email.endsWith('@school.edu') || email.includes('.faculty@');
+  };
+  
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+  
+    // Infer role from email
+    const inferredRole: 'student' | 'teacher' = loginEmail.includes('teacher') ? 'teacher' : 'student';
+  
     try {
-      const success = await login(loginEmail, loginPassword, loginRole);
-      
+      const success = await login(loginEmail, loginPassword, inferredRole);
+  
       if (success) {
         toast({
           title: 'Login successful',
           description: `Welcome back, ${loginEmail}!`,
         });
-        
-        // Navigate based on role
-        if (loginRole === 'teacher') {
+  
+        // Navigate based on inferred role
+        if (inferredRole === 'teacher') {
           navigate('/teacher/dashboard');
         } else {
           navigate('/dashboard');
@@ -179,27 +186,8 @@ export default function Index() {
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
                     />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>I am a</Label>
-                    <RadioGroup 
-                      defaultValue="student" 
-                      value={loginRole}
-                      onValueChange={(value) => setLoginRole(value as 'student' | 'teacher')}
-                      className="flex space-x-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="student" id="student-login" />
-                        <Label htmlFor="student-login">Student</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="teacher" id="teacher-login" />
-                        <Label htmlFor="teacher-login">Teacher</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                  
+                  </div>     
+                
                   <Button type="submit" className="w-full bg-gradient-main" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                   </Button>

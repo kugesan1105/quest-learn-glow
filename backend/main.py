@@ -16,6 +16,7 @@ app.add_middleware(
 
 @app.post("/signup")
 def signup(user: UserSignup):
+    print(f"Received signup request for {user.email}")
     if users_collection.find_one({"email": user.email}):
         raise HTTPException(status_code=400, detail="Email already registered")
 
@@ -24,9 +25,12 @@ def signup(user: UserSignup):
         "name": user.name,
         "email": user.email,
         "password": hashed_pw,
+        "role": user.role.lower(),  # Store role
         "profileImage": user.profileImage,
     })
+    print(f"User {user.name} signed up with role {user.role}")
     return {"message": "Signup successful"}
+
 
 @app.post("/login")
 def login(user: UserLogin):
@@ -35,9 +39,10 @@ def login(user: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_token({"sub": str(db_user["_id"]), "email": db_user["email"]})
-    return {"token": token}
-
-
+    return {
+        "token": token,
+        "role": db_user.get("role", "student")  # Return role to frontend
+    }
 
 
 
