@@ -59,42 +59,14 @@ export default function Index() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      console.log("name", name);
-      console.log("email", email);
-      console.log("password", password);
-      console.log("profileImage", profileImage);
-      const res = await fetch("http://localhost:8000/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          profileImage,
-          role,
-        }),
-      });
-  
-      if (!res.ok) {
-        throw new Error("Signup failed");
-      }
-  
-      const data = await res.json();
-      alert(data.message);
-      localStorage.setItem("userName", name);
-      localStorage.setItem("userEmail", email);
-      localStorage.setItem("userProfileImage", profileImage || "");
-      localStorage.setItem("userRole", role);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-      alert("Signup error!");
-    }
+    // In a real app, we'd create the account
+    // For now, store the data in localStorage and navigate
+    localStorage.setItem("userName", name);
+    localStorage.setItem("userEmail", email);
+    localStorage.setItem("userProfileImage", profileImage || "");
+    navigate("/dashboard");
   };
-  
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -103,42 +75,50 @@ export default function Index() {
         if (event.target?.result) {
           setProfileImage(event.target.result as string);
         }
-      };
-      reader.readAsDataURL(file);
+      } else {
+        toast({
+          title: 'Registration failed',
+          description: 'This email may already be registered.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Registration error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
-
+  
+  const handleFileSelect = (file: File) => {
+    setProfileImage(file);
+  };
+  
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="hero-gradient py-6">
-        <div className="container mx-auto px-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-lg">E</span>
-              </div>
-              <span className="font-bold text-xl text-white">EduQuest</span>
-            </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-16 h-16 bg-gradient-main rounded-xl flex items-center justify-center mb-4">
+            <span className="text-white font-bold text-2xl">E</span>
           </div>
+          <h1 className="text-3xl font-bold bg-gradient-main bg-clip-text text-transparent">EduQuest</h1>
+          <p className="text-muted-foreground text-center mt-2">Your interactive learning platform</p>
         </div>
-      </div>
-
-      <div className="flex-1 flex flex-col md:flex-row">
-        <div className="w-full md:w-1/2 flex items-center justify-center p-8 md:p-16">
-          <div className="max-w-md w-full">
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold mb-4 bg-gradient-main bg-clip-text text-transparent">
-                Unlock Your Learning Journey
-              </h1>
-              <p className="text-muted-foreground">
-                Complete tasks to progress through your personalized learning path.
-                Each completed task will unlock new adventures in knowledge!
-              </p>
-            </div>
-
-            <Card className="shadow-lg">
+        
+        <Card className="w-full">
+          <Tabs defaultValue="login">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
               <CardHeader>
-                <CardTitle className="text-center">Welcome to EduQuest</CardTitle>
+                <CardTitle>Welcome back</CardTitle>
+                <CardDescription>Enter your credentials to access your account</CardDescription>
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="login" className="w-full">
@@ -207,32 +187,72 @@ export default function Index() {
                           Profile Picture
                         </Label>
                       </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          placeholder="Full Name"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          required
-                        />
+                    </RadioGroup>
+                  </div>
+                  
+                  <Button type="submit" className="w-full bg-gradient-main" disabled={isLoading}>
+                    {isLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+                </form>
+              </CardContent>
+            </TabsContent>
+            
+            <TabsContent value="register">
+              <CardHeader>
+                <CardTitle>Create an account</CardTitle>
+                <CardDescription>Enter your details to create your account</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name</Label>
+                    <Input 
+                      id="name" 
+                      placeholder="John Doe"
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-email">Email</Label>
+                    <Input 
+                      id="register-email" 
+                      type="email" 
+                      placeholder="your@email.com"
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="register-password">Password</Label>
+                    <Input 
+                      id="register-password" 
+                      type="password"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>I am a</Label>
+                    <RadioGroup 
+                      defaultValue="student" 
+                      value={registerRole}
+                      onValueChange={(value) => setRegisterRole(value as 'student' | 'teacher')}
+                      className="flex space-x-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="student" id="student-register" />
+                        <Label htmlFor="student-register">Student</Label>
                       </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="email"
-                          placeholder="Email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="password"
-                          placeholder="Password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="teacher" id="teacher-register" />
+                        <Label htmlFor="teacher-register">Teacher</Label>
                       </div>
                       <div className="space-y-2">
                         <label htmlFor="role" className="block text-sm font-medium text-gray-700">
@@ -260,40 +280,9 @@ export default function Index() {
                   </TabsContent>
                 </Tabs>
               </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        <div className="hidden md:flex md:w-1/2 bg-gradient-main items-center justify-center p-16">
-          <div className="text-center text-white">
-            <div className="mb-8 transform -rotate-6">
-              <div className="w-24 h-24 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                <Lock size={48} className="text-white" />
-              </div>
-              <p className="text-lg font-semibold">Begin Your Learning Quest</p>
-            </div>
-            
-            <div className="mb-8 transform rotate-6">
-              <div className="w-24 h-24 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-              </div>
-              <p className="text-lg font-semibold">Track Your Progress</p>
-            </div>
-            
-            <div className="transform -rotate-3">
-              <div className="w-24 h-24 mx-auto bg-white/20 rounded-xl flex items-center justify-center mb-4">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-              </div>
-              <p className="text-lg font-semibold">Complete Challenges</p>
-            </div>
-          </div>
-        </div>
+            </TabsContent>
+          </Tabs>
+        </Card>
       </div>
     </div>
   );
