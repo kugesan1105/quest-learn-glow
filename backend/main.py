@@ -30,13 +30,14 @@ def signup(user: UserSignup):
 
 @app.post("/login")
 def login(user: UserLogin):
-    print(8758576547, 'kukku omm')
     db_user = users_collection.find_one({"email": user.email})
     if not db_user or not verify_password(user.password, db_user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_token({"sub": str(db_user["_id"]), "email": db_user["email"]})
-    return {"token": token}
+    print("Token:", token)
+    print("Profile Image:", db_user["profileImage"])
+    return {"token": token,"profileImage": db_user["profileImage"]}
 
 
 
