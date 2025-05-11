@@ -25,6 +25,7 @@ def signup(user: UserSignup):
         "email": user.email,
         "password": hashed_pw,
         "profileImage": user.profileImage,
+        "role": user.role,
     })
     return {"message": "Signup successful"}
 
@@ -35,9 +36,11 @@ def login(user: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     token = create_token({"sub": str(db_user["_id"]), "email": db_user["email"]})
-    print("Token:", token)
-    print("Profile Image:", db_user["profileImage"])
-    return {"token": token,"profileImage": db_user["profileImage"]}
+    return {
+        "token": token,
+        "profileImage": db_user["profileImage"],
+        "role": db_user["role"],
+    }
 
 
 

@@ -5,6 +5,7 @@ class UserSignup(BaseModel):
     email: EmailStr
     password: str
     profileImage: str | None = None
+    role: str
 
 class UserLogin(BaseModel):
     email: EmailStr

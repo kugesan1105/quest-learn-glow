@@ -21,6 +21,7 @@ export default function Index() {
   const [name, setName] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [role, setRole] = useState("student"); // Default role is student
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,6 +73,7 @@ export default function Index() {
           email,
           password,
           profileImage,
+          role, // Include the role in the signup request
         }),
       });
   
@@ -84,6 +86,7 @@ export default function Index() {
       localStorage.setItem("userName", name);
       localStorage.setItem("userEmail", email);
       localStorage.setItem("userProfileImage", profileImage || "");
+      localStorage.setItem("userRole", role); // Store the role in localStorage
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
@@ -229,6 +232,21 @@ export default function Index() {
                           onChange={(e) => setPassword(e.target.value)}
                           required
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                          Role
+                        </label>
+                        <select
+                          id="role"
+                          value={role}
+                          onChange={(e) => setRole(e.target.value)}
+                          className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          required
+                        >
+                          <option value="student">Student</option>
+                          <option value="teacher">Teacher</option>
+                        </select>
                       </div>
                       <Button 
                         className="w-full btn-gradient" 
