@@ -59,14 +59,42 @@ export default function Index() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, we'd create the account
-    // For now, store the data in localStorage and navigate
-    localStorage.setItem("userName", name);
-    localStorage.setItem("userEmail", email);
-    localStorage.setItem("userProfileImage", profileImage || "");
-    navigate("/dashboard");
+    try {
+      console.log("name", name);
+      console.log("email", email);
+      console.log("password", password);
+      console.log("profileImage", profileImage);
+      const res = await fetch("http://localhost:8000/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          profileImage,
+          role,
+        }),
+      });
+  
+      if (!res.ok) {
+        throw new Error("Signup failed");
+      }
+  
+      const data = await res.json();
+      alert(data.message);
+      localStorage.setItem("userName", name);
+      localStorage.setItem("userEmail", email);
+      localStorage.setItem("userProfileImage", profileImage || "");
+      localStorage.setItem("userRole", role);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert("Signup error!");
+    }
   };
-
+  
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
