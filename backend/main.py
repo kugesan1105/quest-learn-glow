@@ -40,6 +40,7 @@ def login(user: UserLogin):
         "token": token,
         "profileImage": db_user["profileImage"],
         "role": db_user["role"],
+        "name": db_user["name"]
     }
 
 

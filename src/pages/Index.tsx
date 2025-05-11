@@ -21,11 +21,11 @@ export default function Index() {
   const [name, setName] = useState("");
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [role, setRole] = useState("student"); // Default role is student
+  const [role, setRole] = useState("student");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(""); // Clear previous error message
+    setErrorMessage(""); 
     try {
       const res = await fetch("http://localhost:8000/login", {
         method: "POST",
@@ -48,6 +48,7 @@ export default function Index() {
       const data = await res.json();
       localStorage.setItem("token", data.token);
       localStorage.setItem("userEmail", email);
+      localStorage.setItem("userName", data.name);
       localStorage.setItem("userProfileImage", data.profileImage || "");
       navigate("/dashboard");
     } catch (err) {
@@ -73,7 +74,7 @@ export default function Index() {
           email,
           password,
           profileImage,
-          role, // Include the role in the signup request
+          role,
         }),
       });
   
@@ -86,7 +87,7 @@ export default function Index() {
       localStorage.setItem("userName", name);
       localStorage.setItem("userEmail", email);
       localStorage.setItem("userProfileImage", profileImage || "");
-      localStorage.setItem("userRole", role); // Store the role in localStorage
+      localStorage.setItem("userRole", role);
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
