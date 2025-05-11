@@ -47,6 +47,7 @@ export default function Index() {
       const data = await res.json();
       localStorage.setItem("token", data.token);
       localStorage.setItem("userEmail", email);
+      localStorage.setItem("userProfileImage", data.profileImage || "");
       navigate("/dashboard");
     } catch (err) {
       console.error(err);
