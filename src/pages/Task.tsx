@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { FileUpload } from "@/components/FileUpload";
@@ -16,13 +15,38 @@ export default function Task() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  
-  // For this demo, we'll use mock data
-  const task = {
+  const [currentTask, setCurrentTask] = useState<any | null>(null);
+
+  // Fetch task details
+  useEffect(() => {
+    if (taskId) {
+      const fetchTaskDetails = async () => {
+        try {
+          const response = await fetch(`http://localhost:8000/tasks/${taskId}`);
+          if (!response.ok) {
+            throw new Error("Failed to fetch task details");
+          }
+          const data = await response.json();
+          setCurrentTask(data);
+        } catch (error) {
+          console.error("Error fetching task:", error);
+          toast({
+            title: "Error",
+            description: "Could not load task details.",
+            variant: "destructive",
+          });
+        }
+      };
+      fetchTaskDetails();
+    }
+  }, [taskId]);
+
+  // For this demo, we'll use mock data if currentTask is null
+  const task = currentTask || {
     id: taskId || "1",
     title: "Introduction to Web Development",
     description: "In this task, you will learn the foundations of HTML, CSS, and JavaScript, which are the building blocks of modern web development. Follow along with the video and complete the exercises to gain a solid understanding of these technologies.",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ", // Just a placeholder
+    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
     isCompleted: false,
     dueDate: "April 15, 2025",
     estimatedTime: "45 minutes",
@@ -31,10 +55,11 @@ export default function Task() {
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
+    setIsSubmitted(false);
   };
 
-  const handleSubmit = () => {
-    if (!selectedFile) {
+  const handleSubmit = async () => {
+    if (!selectedFile || !taskId) {
       toast({
         title: "No file selected",
         description: "Please select a file to submit",
@@ -42,29 +67,67 @@ export default function Task() {
       });
       return;
     }
-    
-    // In a real app, we would upload the file here
-    // For now, just show success state
-    setIsSubmitted(true);
-    setShowConfetti(true);
-    
-    toast({
-      title: "Task submitted!",
-      description: "Your work has been submitted successfully.",
-      variant: "default",
-    });
-    
-    // Hide confetti after a few seconds
-    setTimeout(() => {
-      setShowConfetti(false);
-    }, 3000);
+
+    const studentId = localStorage.getItem("userEmail") || "unknown_student@example.com";
+    const studentName = localStorage.getItem("userName") || "Unknown Student";
+    const studentImage = localStorage.getItem("userProfileImage") || undefined;
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("student_id", studentId);
+    formData.append("student_name", studentName);
+    if (studentImage) {
+      formData.append("student_image", studentImage);
+    }
+    formData.append("task_title", task.title);
+
+    try {
+      const response = await fetch(`http://localhost:8000/tasks/${taskId}/submit`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Submission failed with status: " + response.status }));
+        throw new Error(errorData.detail || "File upload failed");
+      }
+
+      setIsSubmitted(true);
+      setShowConfetti(true);
+
+      toast({
+        title: "Task submitted!",
+        description: "Your work has been submitted successfully.",
+        variant: "default",
+      });
+
+      setTimeout(() => {
+        setShowConfetti(false);
+      }, 3000);
+
+    } catch (error: any) {
+      console.error("Submission error:", error);
+      toast({
+        title: "Submission Error",
+        description: error.message || "Could not submit your task. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (!currentTask && taskId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p>Loading task details...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       <Confetti isActive={showConfetti} />
-      
+
       <div className="md:pl-24 lg:pl-72 pt-4 pb-20 md:pb-4 md:pt-4">
         <div className="content-container">
           <Button
@@ -78,7 +141,6 @@ export default function Task() {
           </Button>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Task Details */}
             <div className="lg:col-span-2 space-y-6 animate-fade-in">
               <div>
                 <h1 className="page-heading">{task.title}</h1>
@@ -92,9 +154,9 @@ export default function Task() {
                     <span>Estimated time: {task.estimatedTime}</span>
                   </div>
                 </div>
-                
+
                 <p className="text-muted-foreground mb-6">{task.description}</p>
-                
+
                 <Card className="overflow-hidden">
                   <div className="aspect-video w-full">
                     <iframe
@@ -118,15 +180,15 @@ export default function Task() {
 
               <div>
                 <h2 className="text-xl font-bold mb-4">Your Submission</h2>
-                <FileUpload 
+                <FileUpload
                   onFileSelect={handleFileSelect}
                   submitted={isSubmitted}
                   disabled={isSubmitted}
                 />
-                
+
                 <div className="mt-6 flex justify-end">
-                  <Button 
-                    onClick={handleSubmit} 
+                  <Button
+                    onClick={handleSubmit}
                     className={isSubmitted ? "bg-green-500 hover:bg-green-600" : "btn-gradient"}
                     disabled={isSubmitted || !selectedFile}
                   >
@@ -142,13 +204,12 @@ export default function Task() {
                 </div>
               </div>
             </div>
-            
-            {/* Task Timeline */}
+
             <div className="lg:col-span-1 animate-fade-in">
               <Card>
                 <div className="p-6">
                   <h2 className="text-xl font-bold mb-4">Your Progress</h2>
-                  
+
                   <div className="space-y-6">
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
@@ -160,7 +221,7 @@ export default function Task() {
                         <p className="text-sm text-muted-foreground">You've begun this task</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
                         <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white">✓</div>
@@ -171,7 +232,7 @@ export default function Task() {
                         <p className="text-sm text-muted-foreground">Video tutorial completed</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSubmitted ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}>
@@ -184,7 +245,7 @@ export default function Task() {
                         <p className="text-sm text-muted-foreground">Upload your project file</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
                         <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">4</div>
@@ -197,7 +258,7 @@ export default function Task() {
                   </div>
                 </div>
               </Card>
-              
+
               <div className="mt-6">
                 <h2 className="text-xl font-bold mb-4">Next Up</h2>
                 <Card className="overflow-hidden cursor-pointer hover:shadow-md transition-all">

@@ -47,12 +47,13 @@ export function Navbar() {
       location.pathname.startsWith('/task/') ||
       location.pathname === '/history'
     ) {
-      // These are student-specific paths, /calendar is intentionally omitted
       newType = 'student';
     }
-    // If on a shared path like /calendar, newType remains as userType (derived from previous navigation or sessionStorage)
+    // If on a shared path like /calendar, do NOT update newType (keep previous userType)
 
-    if (newType !== userType) {
+    // Only update userType if not on a shared route
+    const isSharedRoute = location.pathname === '/calendar';
+    if (!isSharedRoute && newType !== userType) {
       setUserType(newType);
       if (newType) {
         sessionStorage.setItem('userType', newType);

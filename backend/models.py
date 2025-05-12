@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr, Field, validator
 from bson import ObjectId
-from typing import Optional
+from typing import Optional, List
+from datetime import datetime
 
 class UserSignup(BaseModel):
     name: str
@@ -52,6 +53,39 @@ class TaskInDB(TaskBase):
             ObjectId: str # Ensure ObjectId is serialized to string
         }
 
-# Required for TaskInDB if ObjectId is not directly importable here
-# from bson import ObjectId # Add this if TaskInDB needs to handle ObjectId directly
-# For simplicity, we'll handle ObjectId to str conversion in main.py routes for TaskResponse
+# Submission Models
+class SubmissionBase(BaseModel):
+    taskId: str
+    taskTitle: str
+    studentId: str # Could be email or a unique user ID
+    studentName: str
+    studentImage: Optional[str] = None
+    submissionDate: datetime = Field(default_factory=datetime.utcnow)
+    fileName: str
+    fileSize: int # Store file size in bytes
+    filePath: str # Path on the server where the file is stored
+    status: str = "pending"  # "pending", "graded"
+    grade: Optional[str] = None
+    feedback: Optional[str] = None
+
+class SubmissionCreate(SubmissionBase):
+    pass
+
+class SubmissionUpdate(BaseModel):
+    status: Optional[str] = None
+    grade: Optional[str] = None
+    feedback: Optional[str] = None
+
+class SubmissionResponse(SubmissionBase):
+    id: str
+
+class SubmissionInDB(SubmissionBase):
+    id: str = Field(alias="_id")
+
+    class Config:
+        populate_by_name = True
+        arbitrary_types_allowed = True
+        json_encoders = {
+            ObjectId: str,
+            datetime: lambda dt: dt.isoformat()
+        }

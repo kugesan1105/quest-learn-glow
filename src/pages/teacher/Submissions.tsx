@@ -22,73 +22,153 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface Submission {
+  id: string;
+  taskId: string;
+  taskTitle: string;
+  studentId: string;
+  studentName: string;
+  studentImage?: string;
+  submissionDate: string;
+  fileName: string;
+  fileSize: number;
+  status: "pending" | "graded";
+  grade?: string;
+  feedback?: string;
+}
 
 export default function Submissions() {
   const navigate = useNavigate();
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
-  const [feedback, setFeedback] = useState("");
+  const [feedbackText, setFeedbackText] = useState("");
+  const [grade, setGrade] = useState("A");
 
   useEffect(() => {
-    // In a real app with Supabase, we'd fetch submissions from the database
-    // For now, submissions will be empty until a backend is integrated.
-    setSubmissions([]);
+    const fetchSubmissions = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/submissions");
+        if (!response.ok) {
+          throw new Error("Failed to fetch submissions");
+        }
+        const data = await response.json();
+        setSubmissions(data as Submission[]);
+      } catch (error) {
+        console.error("Error fetching submissions:", error);
+        toast({
+          title: "Error",
+          description: "Could not load submissions.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchSubmissions();
   }, []);
 
   const pendingSubmissions = submissions.filter(s => s.status === "pending");
   const gradedSubmissions = submissions.filter(s => s.status === "graded");
 
-  const handleViewSubmission = (submission: any) => {
+  const handleViewSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
     setViewDialogOpen(true);
   };
 
-  const handleGradeSubmission = (submission: any) => {
+  const handleGradeSubmission = (submission: Submission) => {
     setSelectedSubmission(submission);
-    setFeedback(submission.feedback || "");
+    setFeedbackText(submission.feedback || "");
+    setGrade(submission.grade || "A");
     setFeedbackDialogOpen(true);
   };
 
-  const submitFeedback = () => {
+  const submitFeedback = async () => {
     if (selectedSubmission) {
-      // Update the submission with feedback
-      const updatedSubmissions = submissions.map(s => {
-        if (s.id === selectedSubmission.id) {
-          return {
-            ...s,
-            feedback,
+      try {
+        const response = await fetch(`http://localhost:8000/submissions/${selectedSubmission.id}/grade`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            feedback: feedbackText,
+            grade: grade,
             status: "graded",
-            grade: "A" // In a real app, you would have a grade input
-          };
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to submit feedback");
         }
-        return s;
-      });
-      
-      setSubmissions(updatedSubmissions);
-      setFeedbackDialogOpen(false);
-      
-      // In a real app, this would be saved to the database
-      toast({
-        title: "Feedback submitted",
-        description: "The feedback has been saved successfully.",
-      });
+
+        const updatedSubmission = await response.json();
+
+        setSubmissions(prevSubmissions =>
+          prevSubmissions.map(s =>
+            s.id === selectedSubmission.id ? { ...s, ...updatedSubmission } : s
+          )
+        );
+        setFeedbackDialogOpen(false);
+
+        toast({
+          title: "Feedback submitted",
+          description: "The feedback has been saved successfully.",
+        });
+
+      } catch (error) {
+        console.error("Error submitting feedback:", error);
+        toast({
+          title: "Error",
+          description: "Could not submit feedback. Please try again.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const downloadSubmission = (submission: any) => {
-    // In a real app, this would download the actual file
-    toast({
-      title: "Download started",
-      description: `Downloading ${submission.fileName}`,
-    });
+  const downloadSubmission = async (submission: Submission) => {
+    try {
+      const response = await fetch(`http://localhost:8000/submissions/file/${submission.id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = submission.fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Download started",
+        description: `Downloading ${submission.fileName}`,
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: "Download Error",
+        description: `Could not download ${submission.fileName}. Please try again.`,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <div className="md:pl-24 lg:pl-72 pt-4 pb-20 md:pb-4 md:pt-4">
         <div className="content-container">
           <h1 className="page-heading mb-6">Student Submissions</h1>
@@ -99,7 +179,7 @@ export default function Submissions() {
               <TabsTrigger value="graded">Graded</TabsTrigger>
               <TabsTrigger value="all">All Submissions</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="pending" className="mt-0">
               <Card>
                 <CardHeader>
@@ -136,7 +216,9 @@ export default function Submissions() {
                           <TableCell>
                             <div className="flex items-center space-x-1">
                               <span>{submission.fileName}</span>
-                              <span className="text-xs text-muted-foreground">({submission.fileSize})</span>
+                              <span className="text-xs text-muted-foreground">
+                                ({submission.fileSize ? (submission.fileSize / (1024 * 1024)).toFixed(2) + ' MB' : 'N/A'})
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -166,7 +248,7 @@ export default function Submissions() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="graded" className="mt-0">
               <Card>
                 <CardHeader>
@@ -227,7 +309,7 @@ export default function Submissions() {
                 </CardContent>
               </Card>
             </TabsContent>
-            
+
             <TabsContent value="all" className="mt-0">
               <Card>
                 <CardHeader>
@@ -262,10 +344,10 @@ export default function Submissions() {
                           <TableCell>{submission.taskTitle}</TableCell>
                           <TableCell>{submission.submissionDate}</TableCell>
                           <TableCell>
-                            <span 
+                            <span
                               className={`px-2 py-1 text-xs rounded-full ${
-                                submission.status === 'graded' 
-                                  ? 'bg-green-100 text-green-800' 
+                                submission.status === 'graded'
+                                  ? 'bg-green-100 text-green-800'
                                   : 'bg-yellow-100 text-yellow-800'
                               }`}
                             >
@@ -302,7 +384,6 @@ export default function Submissions() {
         </div>
       </div>
 
-      {/* View Submission Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -315,35 +396,38 @@ export default function Submissions() {
                   {selectedSubmission.studentImage ? (
                     <AvatarImage src={selectedSubmission.studentImage} />
                   ) : (
-                    <AvatarFallback>{selectedSubmission.studentName.slice(0, 2)}</AvatarFallback>
+                    <AvatarFallback>{selectedSubmission.studentName ? selectedSubmission.studentName.slice(0, 2).toUpperCase() : 'SN'}</AvatarFallback>
                   )}
                 </Avatar>
                 <div>
                   <p className="font-medium">{selectedSubmission.studentName}</p>
-                  <p className="text-sm text-muted-foreground">Submitted on {selectedSubmission.submissionDate}</p>
+                  <p className="text-sm text-muted-foreground">Submitted on {new Date(selectedSubmission.submissionDate).toLocaleDateString()}</p>
                 </div>
               </div>
-              
+
               <div>
                 <p className="text-sm font-medium">Task</p>
                 <p>{selectedSubmission.taskTitle}</p>
               </div>
-              
+
               <div>
                 <p className="text-sm font-medium">Submitted File</p>
                 <div className="flex items-center justify-between bg-gray-100 p-3 rounded-md">
-                  <span>{selectedSubmission.fileName} ({selectedSubmission.fileSize})</span>
+                  <span>
+                    {selectedSubmission.fileName}
+                    ({selectedSubmission.fileSize ? (selectedSubmission.fileSize / (1024 * 1024)).toFixed(2) + ' MB' : 'N/A'})
+                  </span>
                   <Button size="sm" variant="outline" onClick={() => downloadSubmission(selectedSubmission)}>
                     <Download size={16} className="mr-2" /> Download
                   </Button>
                 </div>
               </div>
-              
+
               {selectedSubmission.status === "graded" && (
                 <div>
                   <p className="text-sm font-medium">Feedback</p>
                   <div className="bg-gray-100 p-3 rounded-md">
-                    <p>{selectedSubmission.feedback}</p>
+                    <p>{selectedSubmission.feedback || "No feedback provided yet."}</p>
                   </div>
                   <div className="mt-2 flex items-center">
                     <p className="text-sm font-medium mr-2">Grade:</p>
@@ -351,7 +435,7 @@ export default function Submissions() {
                   </div>
                 </div>
               )}
-              
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setViewDialogOpen(false)}>
                   Close
@@ -370,7 +454,6 @@ export default function Submissions() {
         </DialogContent>
       </Dialog>
 
-      {/* Feedback Dialog */}
       <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
@@ -382,38 +465,39 @@ export default function Submissions() {
                 <p className="text-sm font-medium">Student</p>
                 <p>{selectedSubmission.studentName}</p>
               </div>
-              
+
               <div>
                 <p className="text-sm font-medium">Task</p>
                 <p>{selectedSubmission.taskTitle}</p>
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="feedback" className="text-sm font-medium">Feedback</label>
-                <textarea
+                <Textarea
                   id="feedback"
                   className="w-full min-h-[150px] p-3 border rounded-md"
-                  value={feedback}
-                  onChange={(e) => setFeedback(e.target.value)}
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Provide feedback on the submission..."
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="grade" className="text-sm font-medium">Grade</label>
-                <select
-                  id="grade"
-                  className="w-full p-2 border rounded-md"
-                  defaultValue="A"
-                >
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                  <option value="F">F</option>
-                </select>
+                <Select value={grade} onValueChange={setGrade}>
+                  <SelectTrigger className="w-full p-2 border rounded-md">
+                    <SelectValue placeholder="Select grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A">A</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="C">C</SelectItem>
+                    <SelectItem value="D">D</SelectItem>
+                    <SelectItem value="F">F</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              
+
               <DialogFooter>
                 <Button variant="outline" onClick={() => setFeedbackDialogOpen(false)}>
                   Cancel

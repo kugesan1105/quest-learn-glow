@@ -1,77 +1,48 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
-import { TaskCard, Task } from "@/components/TaskCard";
+import { TaskCard } from "@/components/TaskCard"; // Assuming TaskCard expects 'Task' type
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from "@/components/ui/use-toast";
+
+// Define Task interface consistent with backend and TaskCard props
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  isLocked: boolean;
+  isCompleted: boolean;
+  dueDate: string;
+  estimatedTime?: string;
+  instructions?: string;
+}
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    // Fetch tasks from localStorage or use demo data
-    const storedTasks = localStorage.getItem("tasks");
-    if (storedTasks) {
-      setTasks(JSON.parse(storedTasks));
-    } else {
-      // Use demo data if no tasks are stored
-      const demoTasks = [
-        {
-          id: 1,
-          title: "Introduction to Web Development",
-          description: "Learn the basics of HTML, CSS, and JavaScript",
-          videoUrl: "https://example.com/video1",
-          isLocked: false,
-          isCompleted: true,
-          dueDate: "Apr 15, 2025"
-        },
-        {
-          id: 2,
-          title: "Advanced CSS Techniques",
-          description: "Master flexbox, grid, and responsive design",
-          videoUrl: "https://example.com/video2",
-          isLocked: false,
-          isCompleted: false,
-          dueDate: "Apr 18, 2025"
-        },
-        {
-          id: 3,
-          title: "JavaScript Fundamentals",
-          description: "Variables, functions, and control flow",
-          videoUrl: "https://example.com/video3",
-          isLocked: true,
-          isCompleted: false,
-          dueDate: "Apr 20, 2025"
-        },
-        {
-          id: 4,
-          title: "Building Interactive UIs",
-          description: "Create dynamic user interfaces with JavaScript",
-          videoUrl: "https://example.com/video4",
-          isLocked: true,
-          isCompleted: false,
-          dueDate: "Apr 25, 2025"
-        },
-        {
-          id: 5,
-          title: "Introduction to React",
-          description: "Learn the basics of the React library",
-          videoUrl: "https://example.com/video5",
-          isLocked: true,
-          isCompleted: false,
-          dueDate: "Apr 30, 2025"
-        },
-        {
-          id: 6,
-          title: "Building a Full-Stack App",
-          description: "Combine frontend and backend technologies",
-          videoUrl: "https://example.com/video6",
-          isLocked: true,
-          isCompleted: false,
-          dueDate: "May 5, 2025"
+    const fetchTasks = async () => {
+      try {
+        // Fetch tasks from the backend API
+        const response = await fetch("http://localhost:8000/tasks");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-      ];
-      setTasks(demoTasks);
-    }
+        const data = await response.json();
+        setTasks(data as Task[]); // Assuming the backend returns an array of Task
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+        toast({
+          title: "Error fetching tasks",
+          description: "Could not load tasks from the server. Please try again later.",
+          variant: "destructive",
+        });
+        // Fallback to empty or previously stored demo data if desired
+        setTasks([]); // Or load demo tasks as a fallback
+      }
+    };
+
+    fetchTasks();
   }, []);
 
   const allTasks = tasks;
