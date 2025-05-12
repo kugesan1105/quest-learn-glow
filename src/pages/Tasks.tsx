@@ -30,6 +30,10 @@ export default function Tasks() {
         }
         const data = await response.json();
         setTasks(data as Task[]); // Assuming the backend returns an array of Task
+        
+        // Log task completion status for debugging
+        console.log("Fetched tasks with completion status:", 
+          data.map((t: Task) => ({ id: t.id, title: t.title, isCompleted: t.isCompleted })));
       } catch (error) {
         console.error("Failed to fetch tasks:", error);
         toast({

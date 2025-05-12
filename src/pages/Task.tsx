@@ -56,6 +56,12 @@ export default function Task() {
         if (res.ok) {
           const data = await res.json();
           setStudentSubmission(data.length > 0 ? data[0] : null);
+          // Mark as submitted if graded
+          if (data.length > 0) {
+            if (data[0].status === "graded") {
+              setIsSubmitted(true);
+            }
+          }
         }
       } catch (e) {
         setStudentSubmission(null);

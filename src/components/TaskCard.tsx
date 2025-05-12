@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { FileText, Lock, Video } from "lucide-react";
 
 export interface Task {
-  id: number;
+  id: string;
   title: string;
   description: string;
   videoUrl: string;

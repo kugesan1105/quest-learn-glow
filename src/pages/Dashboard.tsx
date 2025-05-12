@@ -43,6 +43,9 @@ export default function Dashboard() {
           .filter(task => !task.isCompleted && !task.isLocked && task.dueDate)
           .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
         setNextDeadlineTask(upcomingTask || null);
+        
+        // Log completed tasks for debugging
+        console.log("Completed tasks:", data.filter(t => t.isCompleted).map(t => t.title));
       } catch (error) {
         console.error("Error fetching tasks:", error);
         // Optionally, set an error state and display a message to the user
