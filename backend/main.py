@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form, Response
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form, Response, Query
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 from models import (
@@ -228,10 +228,15 @@ async def submit_task_assignment(
         await file.close()
 
 @app.get("/submissions", response_model=List[SubmissionResponse])
-async def get_all_submissions(request: Request):
+async def get_all_submissions(request: Request, taskId: str = Query(None), studentId: str = Query(None)):
     print(f"Request received at /submissions (GET) from {request.client.host}")
+    query = {}
+    if taskId:
+        query["taskId"] = taskId
+    if studentId:
+        query["studentId"] = studentId
     submissions = []
-    for sub_doc in submissions_collection.find().sort("submissionDate", -1):
+    for sub_doc in submissions_collection.find(query).sort("submissionDate", -1):
         submissions.append(submission_helper(sub_doc))
     return submissions
 
@@ -257,6 +262,60 @@ async def download_submission_file(submission_id: str, request: Request):
         headers={"Content-Disposition": f"attachment; filename=\"{file_name}\""}
     )
 
+@app.put("/submissions/{submission_id}/replace", response_model=SubmissionResponse)
+async def replace_submission(
+    submission_id: str,
+    file: UploadFile = File(...),
+    student_id: str = Form(...),
+    student_name: str = Form(...),
+    student_image: Optional[str] = Form(None),
+    task_title: str = Form(...)
+):
+    if not ObjectId.is_valid(submission_id):
+        raise HTTPException(status_code=400, detail="Invalid Submission ID format")
+    submission = submissions_collection.find_one({"_id": ObjectId(submission_id)})
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    try:
+        file_content = await file.read()
+        file_size = len(file_content)
+        MAX_FILE_SIZE_MB = 15
+        if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File size exceeds the limit of {MAX_FILE_SIZE_MB}MB."
+            )
+        update_data = {
+            "fileName": file.filename,
+            "fileSize": file_size,
+            "fileData": file_content,
+            "submissionDate": datetime.utcnow(),
+            "studentId": student_id,
+            "studentName": student_name,
+            "studentImage": student_image,
+            "taskTitle": task_title,
+            "status": "pending",
+            "grade": None,
+            "feedback": None,
+        }
+        submissions_collection.update_one(
+            {"_id": ObjectId(submission_id)},
+            {"$set": update_data}
+        )
+        updated = submissions_collection.find_one({"_id": ObjectId(submission_id)})
+        return submission_helper(updated)
+    finally:
+        await file.close()
+
+@app.delete("/submissions/{submission_id}")
+async def delete_submission(submission_id: str):
+    if not ObjectId.is_valid(submission_id):
+        raise HTTPException(status_code=400, detail="Invalid Submission ID format")
+    result = submissions_collection.delete_one({"_id": ObjectId(submission_id)})
+    if result.deleted_count == 1:
+        return {"message": "Submission deleted"}
+    raise HTTPException(status_code=404, detail="Submission not found")
+
 @app.put("/submissions/{submission_id}/grade", response_model=SubmissionResponse)
 async def grade_submission(submission_id: str, submission_update: SubmissionUpdate, request: Request):
     print(f"Request received at /submissions/{submission_id}/grade (PUT) from {request.client.host}")
@@ -279,6 +338,19 @@ async def grade_submission(submission_id: str, submission_update: SubmissionUpda
         raise HTTPException(status_code=404, detail=f"Submission with id {submission_id} not found")
     
     updated_submission_doc = submissions_collection.find_one({"_id": ObjectId(submission_id)})
+    # Unlock next task if grade is A or B
+    if updated_submission_doc and updated_submission_doc.get("grade") in ["A", "B"]:
+        # Find the next locked task for the student and unlock it
+        student_id = updated_submission_doc["studentId"]
+        all_tasks = list(tasks_collection.find().sort("dueDate", 1))
+        completed_task_ids = [
+            s["taskId"] for s in submissions_collection.find({"studentId": student_id, "status": "graded", "grade": {"$in": ["A", "B"]}})
+        ]
+        # Find the next locked task not in completed_task_ids
+        for task in all_tasks:
+            if str(task["_id"]) not in completed_task_ids and task.get("isLocked", False):
+                tasks_collection.update_one({"_id": task["_id"]}, {"$set": {"isLocked": False}})
+                break
     if updated_submission_doc:
         return submission_helper(updated_submission_doc)
     raise HTTPException(status_code=500, detail="Failed to retrieve updated submission")

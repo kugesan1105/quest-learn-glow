@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
-import { CheckCircle, ChevronLeft, Clock } from "lucide-react";
+import { CheckCircle, ChevronLeft, Clock, Eye, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { getYoutubeEmbedUrl } from "@/lib/utils";
 
 export default function Task() {
   const { taskId } = useParams();
@@ -18,6 +19,8 @@ export default function Task() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentTask, setCurrentTask] = useState<any | null>(null);
+  const [studentSubmission, setStudentSubmission] = useState<any | null>(null);
+  const [isLoadingSubmission, setIsLoadingSubmission] = useState(true);
 
   // Fetch task details
   useEffect(() => {
@@ -42,6 +45,25 @@ export default function Task() {
       fetchTaskDetails();
     }
   }, [taskId]);
+
+  // Fetch student's submission for this task
+  useEffect(() => {
+    const fetchSubmission = async () => {
+      if (!taskId || !user?.email) return;
+      setIsLoadingSubmission(true);
+      try {
+        const res = await fetch(`http://localhost:8000/submissions?taskId=${taskId}&studentId=${user.email}`);
+        if (res.ok) {
+          const data = await res.json();
+          setStudentSubmission(data.length > 0 ? data[0] : null);
+        }
+      } catch (e) {
+        setStudentSubmission(null);
+      }
+      setIsLoadingSubmission(false);
+    };
+    fetchSubmission();
+  }, [taskId, user?.email, isSubmitted]);
 
   // For this demo, we'll use mock data if currentTask is null
   const task = currentTask || {
@@ -80,8 +102,15 @@ export default function Task() {
     formData.append("task_title", task.title);
 
     try {
-      const response = await fetch(`http://localhost:8000/tasks/${taskId}/submit`, {
-        method: "POST",
+      let url = `http://localhost:8000/tasks/${taskId}/submit`;
+      let method = "POST";
+      if (studentSubmission) {
+        // If already submitted, update/replace
+        url = `http://localhost:8000/submissions/${studentSubmission.id}/replace`;
+        method = "PUT";
+      }
+      const response = await fetch(url, {
+        method,
         body: formData,
       });
 
@@ -94,7 +123,7 @@ export default function Task() {
       setShowConfetti(true);
 
       toast({
-        title: "Task submitted!",
+        title: studentSubmission ? "Submission updated!" : "Task submitted!",
         description: "Your work has been submitted successfully.",
         variant: "default",
       });
@@ -108,6 +137,29 @@ export default function Task() {
       toast({
         title: "Submission Error",
         description: error.message || "Could not submit your task. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteSubmission = async () => {
+    if (!studentSubmission) return;
+    try {
+      const res = await fetch(`http://localhost:8000/submissions/${studentSubmission.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete submission");
+      setStudentSubmission(null);
+      setSelectedFile(null);
+      setIsSubmitted(false);
+      toast({
+        title: "Submission removed",
+        description: "You can now upload a new submission.",
+      });
+    } catch (e) {
+      toast({
+        title: "Error",
+        description: "Could not remove submission.",
         variant: "destructive",
       });
     }
@@ -158,7 +210,7 @@ export default function Task() {
                 <Card className="overflow-hidden">
                   <div className="aspect-video w-full">
                     <iframe
-                      src={task.videoUrl}
+                      src={getYoutubeEmbedUrl(task.videoUrl)}
                       className="w-full h-full"
                       title="Task Video"
                       frameBorder="0"
@@ -178,10 +230,50 @@ export default function Task() {
 
               <div>
                 <h2 className="text-xl font-bold mb-4">Your Submission</h2>
+                {isLoadingSubmission ? (
+                  <p>Loading your submission...</p>
+                ) : studentSubmission ? (
+                  <div className="border rounded-md p-4 mb-4 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{studentSubmission.fileName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Submitted: {new Date(studentSubmission.submissionDate).toLocaleString()}
+                        </p>
+                        {studentSubmission.status === "graded" && (
+                          <div className="mt-2">
+                            <span className="font-bold">Grade: {studentSubmission.grade}</span>
+                            <p className="text-sm text-muted-foreground">Feedback: {studentSubmission.feedback || "No feedback"}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => window.open(`http://localhost:8000/submissions/file/${studentSubmission.id}`, "_blank")}
+                        >
+                          <Eye size={16} className="mr-1" /> View
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleDeleteSubmission}
+                        >
+                          <Trash2 size={16} className="mr-1" /> Remove
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <p className="text-sm text-muted-foreground">Want to update your submission? Upload a new file below:</p>
+                    </div>
+                  </div>
+                ) : null}
+
                 <FileUpload
                   onFileSelect={handleFileSelect}
                   submitted={isSubmitted}
-                  disabled={isSubmitted}
+                  disabled={studentSubmission && !selectedFile}
                 />
 
                 <div className="mt-6 flex justify-end">
@@ -190,14 +282,17 @@ export default function Task() {
                     className={isSubmitted ? "bg-green-500 hover:bg-green-600" : "btn-gradient"}
                     disabled={isSubmitted || !selectedFile}
                   >
-                    {isSubmitted ? (
-                      <span className="flex items-center gap-1">
-                        <CheckCircle size={16} />
-                        Submitted
-                      </span>
-                    ) : (
-                      "Submit Task"
-                    )}
+                    {studentSubmission
+                      ? "Update Submission"
+                      : isSubmitted
+                        ? (
+                          <span className="flex items-center gap-1">
+                            <CheckCircle size={16} />
+                            Submitted
+                          </span>
+                        )
+                        : "Submit Task"
+                    }
                   </Button>
                 </div>
               </div>
