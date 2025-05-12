@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -34,53 +33,8 @@ export default function Submissions() {
 
   useEffect(() => {
     // In a real app with Supabase, we'd fetch submissions from the database
-    // For now, we'll use mock data
-    const mockSubmissions = [
-      {
-        id: 1,
-        taskId: 1,
-        taskTitle: "Introduction to Web Development",
-        studentId: "student1",
-        studentName: "John Doe",
-        studentImage: null,
-        submissionDate: "Apr 14, 2025",
-        fileName: "john_project.zip",
-        fileSize: "1.2 MB",
-        status: "graded",
-        feedback: "Great work! I like how you structured your HTML.",
-        grade: "A"
-      },
-      {
-        id: 2,
-        taskId: 2,
-        taskTitle: "Advanced CSS Techniques",
-        studentId: "student2",
-        studentName: "Jane Smith",
-        studentImage: null,
-        submissionDate: "Apr 16, 2025",
-        fileName: "css_assignment.zip",
-        fileSize: "2.4 MB",
-        status: "pending",
-        feedback: "",
-        grade: null
-      },
-      {
-        id: 3,
-        taskId: 1,
-        taskTitle: "Introduction to Web Development",
-        studentId: "student3",
-        studentName: "Michael Johnson",
-        studentImage: null,
-        submissionDate: "Apr 15, 2025",
-        fileName: "web_basics.zip",
-        fileSize: "0.9 MB",
-        status: "pending",
-        feedback: "",
-        grade: null
-      }
-    ];
-    
-    setSubmissions(mockSubmissions);
+    // For now, submissions will be empty until a backend is integrated.
+    setSubmissions([]);
   }, []);
 
   const pendingSubmissions = submissions.filter(s => s.status === "pending");

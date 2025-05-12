@@ -1,7 +1,7 @@
-
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Calendar, FileText, Home, ListCheck, Users, PlusCircle, CheckSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -29,8 +29,41 @@ const NavItem = ({ icon, label, active, onClick }: NavItemProps) => {
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [userType, setUserType] = useState<'teacher' | 'student' | null>(() => {
+    return sessionStorage.getItem('userType') as 'teacher' | 'student' | null;
+  });
+
+  useEffect(() => {
+    let newType: 'teacher' | 'student' | null = userType;
+
+    if (location.pathname.includes('/teacher/')) {
+      newType = 'teacher';
+    } else if (location.pathname === '/') {
+      newType = null;
+    } else if (
+      location.pathname === '/dashboard' ||
+      location.pathname === '/tasks' ||
+      location.pathname.startsWith('/task/') ||
+      location.pathname === '/history'
+    ) {
+      // These are student-specific paths, /calendar is intentionally omitted
+      newType = 'student';
+    }
+    // If on a shared path like /calendar, newType remains as userType (derived from previous navigation or sessionStorage)
+
+    if (newType !== userType) {
+      setUserType(newType);
+      if (newType) {
+        sessionStorage.setItem('userType', newType);
+      } else {
+        sessionStorage.removeItem('userType');
+      }
+    }
+  }, [location.pathname, userType]);
+
   const isLoggedIn = location.pathname !== '/';
-  const isTeacher = location.pathname.includes('/teacher');
+  const isTeacher = userType === 'teacher';
 
   if (!isLoggedIn) return null;
 

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
 type UserRole = 'student' | 'teacher';
@@ -14,46 +13,69 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string, role: UserRole) => Promise<boolean>;
-  signup: (name: string, email: string, password: string, role: UserRole, profileImage?: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string, role: UserRole, profileImage?: string | null) => Promise<boolean>;
   logout: () => void;
   isTeacher: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const API_BASE_URL = "http://localhost:8000"; // Ensure this matches your backend URL
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is logged in from localStorage
     const storedUser = localStorage.getItem('user');
-    if (storedUser) {
+    const token = localStorage.getItem('token');
+    if (storedUser && token) { // Ensure both user and token exist for a valid session
       setUser(JSON.parse(storedUser));
+    } else {
+      // If one is missing, clear both to be safe
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
     }
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string, role: UserRole): Promise<boolean> => {
-    // This simulates a login API call
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setIsLoading(true);
     try {
-      // In a real app, this would be an API call to verify credentials
-      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      const foundUser = storedUsers.find(
-        (u: any) => u.email === email && u.password === password && u.role === role
-      );
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      if (foundUser) {
-        // Remove password before storing in state
-        const { password, ...userWithoutPassword } = foundUser;
-        setUser(userWithoutPassword);
-        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-        return true;
+      if (!response.ok) {
+        // Log error details from backend if available
+        const errorData = await response.json().catch(() => ({ detail: "Login failed" }));
+        console.error('Login failed:', errorData.detail);
+        setIsLoading(false);
+        return false;
       }
-      return false;
+
+      const data = await response.json();
+      // Backend returns: { token, profileImage, role, name }
+      const loggedInUser: User = {
+        name: data.name,
+        email: email, // email is known from input
+        profileImage: data.profileImage,
+        role: data.role,
+      };
+
+      setUser(loggedInUser);
+      localStorage.setItem('user', JSON.stringify(loggedInUser));
+      localStorage.setItem('token', data.token);
+      setIsLoading(false);
+      return true;
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Login error:', error);
+      setIsLoading(false);
       return false;
     }
   };
@@ -63,39 +85,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     email: string, 
     password: string, 
     role: UserRole, 
-    profileImage?: string
+    profileImage?: string | null
   ): Promise<boolean> => {
+    setIsLoading(true);
     try {
-      // In a real app, this would be an API call
-      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      
-      // Check if email already exists
-      if (storedUsers.some((user: any) => user.email === email)) {
+      const response = await fetch(`${API_BASE_URL}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name, email, password, role, profileImage }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Signup failed" }));
+        console.error('Signup failed:', errorData.detail);
+        setIsLoading(false);
         return false;
       }
-
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
-        name,
-        email,
-        password, // In a real app, this would be hashed
-        role,
-        profileImage
-      };
-
-      // Save to localStorage
-      storedUsers.push(newUser);
-      localStorage.setItem('users', JSON.stringify(storedUsers));
-
-      // Login the user (remove password before setting)
-      const { password: _, ...userWithoutPassword } = newUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
       
+      // Backend returns: {"message": "Signup successful"}
+      // User will need to login separately after signup
+      setIsLoading(false);
       return true;
     } catch (error) {
-      console.error('Signup failed:', error);
+      console.error('Signup error:', error);
+      setIsLoading(false);
       return false;
     }
   };
@@ -103,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token'); // Also remove token
   };
 
   const isTeacher = user?.role === 'teacher';

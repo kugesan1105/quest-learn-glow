@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -16,35 +15,42 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  dueDate: string;
+  estimatedTime?: string;
+  instructions?: string;
+  isLocked: boolean;
+  isCompleted: boolean;
+}
+
 export default function TeacherDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [students, setStudents] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
-    // In a real app with Supabase, we'd fetch this data from the database
-    // For now, we'll use localStorage
-    const storedTasks = localStorage.getItem("tasks");
-    if (storedTasks) {
-      setTasks(JSON.parse(storedTasks));
-    }
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/tasks"); // Adjust URL if needed
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+        const data = await response.json();
+        setTasks(data);
+        console.log("Fetched tasks:", data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        // Optionally, show an error toast to the user
+      }
+    };
 
-    // Mock submissions data
-    const mockSubmissions = [
-      { id: 1, taskTitle: "Introduction to Web Development", studentName: "John Doe", date: "Apr 14, 2025", status: "Graded" },
-      { id: 2, taskTitle: "Advanced CSS Techniques", studentName: "Jane Smith", date: "Apr 16, 2025", status: "Pending" },
-    ];
-    setSubmissions(mockSubmissions);
-
-    // Mock students data
-    const storedUsers = localStorage.getItem("users");
-    if (storedUsers) {
-      const allUsers = JSON.parse(storedUsers);
-      const studentUsers = allUsers.filter((user: any) => user.role === "student");
-      setStudents(studentUsers);
-    }
+    fetchTasks();
   }, []);
 
   const completedTasks = tasks.filter(task => task.isCompleted).length;

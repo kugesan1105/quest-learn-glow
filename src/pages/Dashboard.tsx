@@ -1,12 +1,16 @@
-
 import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { ProgressTracker } from "@/components/ProgressTracker";
-import { TaskCard, Task } from "@/components/TaskCard";
+import { TaskCard, Task as TaskCardType } from "@/components/TaskCard"; // Renamed to avoid conflict
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User } from "lucide-react";
+
+// Define Task interface consistent with backend and TaskCardType
+export interface Task extends TaskCardType {
+  id: string; // Changed from number to string
+}
 
 export default function Dashboard() {
   const [userName, setUserName] = useState<string>("Student");
@@ -16,67 +20,30 @@ export default function Dashboard() {
     // Get user data from localStorage
     const name = localStorage.getItem("userName");
     const image = localStorage.getItem("userProfileImage");
-    
+
     if (name) setUserName(name);
     if (image) setUserProfileImage(image);
   }, []);
 
-  const [tasks] = useState<Task[]>([
-    {
-      id: 1,
-      title: "Introduction to Web Development",
-      description: "Learn the basics of HTML, CSS, and JavaScript",
-      videoUrl: "https://example.com/video1",
-      isLocked: false,
-      isCompleted: true,
-      dueDate: "Apr 15, 2025"
-    },
-    {
-      id: 2,
-      title: "Advanced CSS Techniques",
-      description: "Master flexbox, grid, and responsive design",
-      videoUrl: "https://example.com/video2",
-      isLocked: false,
-      isCompleted: false,
-      dueDate: "Apr 18, 2025"
-    },
-    {
-      id: 3,
-      title: "JavaScript Fundamentals",
-      description: "Variables, functions, and control flow",
-      videoUrl: "https://example.com/video3",
-      isLocked: true,
-      isCompleted: false,
-      dueDate: "Apr 20, 2025"
-    },
-    {
-      id: 4,
-      title: "Building Interactive UIs",
-      description: "Create dynamic user interfaces with JavaScript",
-      videoUrl: "https://example.com/video4",
-      isLocked: true,
-      isCompleted: false,
-      dueDate: "Apr 25, 2025"
-    },
-    {
-      id: 5,
-      title: "Introduction to React",
-      description: "Learn the basics of the React library",
-      videoUrl: "https://example.com/video5",
-      isLocked: true,
-      isCompleted: false,
-      dueDate: "Apr 30, 2025"
-    },
-    {
-      id: 6,
-      title: "Building a Full-Stack App",
-      description: "Combine frontend and backend technologies",
-      videoUrl: "https://example.com/video6",
-      isLocked: true,
-      isCompleted: false,
-      dueDate: "May 5, 2025"
-    }
-  ]);
+  const [tasks, setTasks] = useState<Task[]>([]); // Initialize with empty array
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/tasks");
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        // Optionally, set an error state and display a message to the user
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   const completedTasks = tasks.filter(task => task.isCompleted).length;
   const totalTasks = tasks.length;
@@ -87,7 +54,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
-      
+
       <div className="md:pl-24 lg:pl-72 pt-4 pb-20 md:pb-4 md:pt-4">
         <div className="content-container">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -112,7 +79,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <ProgressTracker completedTasks={completedTasks} totalTasks={totalTasks} className="mt-4" />
-                
+
                 <div className="mt-8">
                   <h3 className="font-medium mb-2">Your Learning Stats</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -126,7 +93,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-8">
                   <h3 className="font-medium mb-2">Next Deadline</h3>
                   <div className="bg-gradient-card text-white rounded-lg p-4">
@@ -136,31 +103,36 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Tasks Section */}
             <div className="lg:col-span-2 animate-fade-in">
               <h2 className="page-heading">Your Learning Path</h2>
-              
+
               <Tabs defaultValue="upcoming" className="w-full">
                 <TabsList className="mb-4">
                   <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
                   <TabsTrigger value="locked">Locked</TabsTrigger>
                   <TabsTrigger value="completed">Completed</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="upcoming" className="mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {upcomingTasks.map(task => (
                       <TaskCard key={task.id} task={task} />
                     ))}
-                    {upcomingTasks.length === 0 && (
+                    {upcomingTasks.length === 0 && tasks.length > 0 && (
                       <div className="col-span-full text-center py-10">
                         <p className="text-muted-foreground">No upcoming tasks. Check locked or completed tasks.</p>
                       </div>
                     )}
+                    {tasks.length === 0 && (
+                      <div className="col-span-full text-center py-10">
+                        <p className="text-muted-foreground">Loading tasks...</p>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="locked" className="mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {lockedTasks.map(task => (
@@ -168,13 +140,13 @@ export default function Dashboard() {
                     ))}
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="completed" className="mt-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {completedTasksList.map(task => (
                       <TaskCard key={task.id} task={task} />
                     ))}
-                    {completedTasksList.length === 0 && (
+                    {completedTasksList.length === 0 && tasks.length > 0 && (
                       <div className="col-span-full text-center py-10">
                         <p className="text-muted-foreground">No completed tasks yet. Start your journey!</p>
                       </div>

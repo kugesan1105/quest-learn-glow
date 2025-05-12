@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -24,49 +23,107 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+interface Task {
+  id: string; // MongoDB ObjectId string
+  title: string;
+  description: string;
+  videoUrl?: string;
+  dueDate: string;
+  estimatedTime?: string;
+  instructions?: string;
+  isLocked: boolean;
+  isCompleted: boolean;
+}
+
 export default function ManageTasks() {
   const navigate = useNavigate();
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null); // ID is now string
 
   useEffect(() => {
-    // Load tasks from localStorage
-    const storedTasks = localStorage.getItem("tasks");
-    if (storedTasks) {
-      setTasks(JSON.parse(storedTasks));
-    }
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/tasks"); // Adjust URL if needed
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        toast({
+          title: "Error",
+          description: "Could not fetch tasks.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchTasks();
   }, []);
 
-  const handleAddTask = (newTask: any) => {
-    const updatedTasks = [...tasks, { ...newTask, id: Date.now(), isLocked: false, isCompleted: false }];
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-    setIsAddDialogOpen(false);
-    toast({
-      title: "Task created",
-      description: "The task has been created successfully.",
-    });
+  const handleAddTask = async (newTaskData: Omit<Task, 'id' | 'isLocked' | 'isCompleted'>) => {
+    try {
+      const response = await fetch("http://localhost:8000/tasks", { // Adjust URL
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...newTaskData, isLocked: false, isCompleted: false }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to create task");
+      }
+      const createdTask = await response.json();
+      setTasks(prevTasks => [...prevTasks, createdTask]);
+      setIsAddDialogOpen(false);
+      toast({
+        title: "Task created",
+        description: "The task has been created successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error creating task:", error);
+      toast({
+        title: "Error creating task",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDeleteClick = (taskId: number) => {
+  const handleDeleteClick = (taskId: string) => {
     setTaskToDelete(taskId);
     setIsDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (taskToDelete === null) return;
     
-    const updatedTasks = tasks.filter(task => task.id !== taskToDelete);
-    setTasks(updatedTasks);
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-    setIsDeleteDialogOpen(false);
-    setTaskToDelete(null);
-    toast({
-      title: "Task deleted",
-      description: "The task has been deleted successfully.",
-    });
+    try {
+      const response = await fetch(`http://localhost:8000/tasks/${taskToDelete}`, { // Adjust URL
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to delete task");
+      }
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete));
+      setIsDeleteDialogOpen(false);
+      setTaskToDelete(null);
+      toast({
+        title: "Task deleted",
+        description: "The task has been deleted successfully.",
+      });
+    } catch (error: any) {
+      console.error("Error deleting task:", error);
+      toast({
+        title: "Error deleting task",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

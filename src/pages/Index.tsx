@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,13 +12,13 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function Index() {
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, user: authUser } = useAuth(); // Get user from auth context
   const [isLoading, setIsLoading] = useState(false);
   
   // Login state
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [loginRole, setLoginRole] = useState<'student' | 'teacher'>('student');
+  const [loginRoleUI, setLoginRoleUI] = useState<'student' | 'teacher'>('student'); // loginRole is still used for the RadioGroup, but not passed to auth.login()
   
   // Register state
   const [registerName, setRegisterName] = useState('');
@@ -31,18 +30,29 @@ export default function Index() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+    console.log('Logging in with:', {
+        loginEmail,
+        loginPassword,
+        loginRoleUI,
+    });
     try {
-      const success = await login(loginEmail, loginPassword, loginRole);
-      
-      if (success) {
+      // Call login without role, backend determines role
+      const success = await login(loginEmail, loginPassword); 
+      if (success && authUser) { // Check authUser after login success
+        console.log('Login result:', authUser);
+        localStorage.setItem('role', authUser.role);
+        console.log('Logging in with:', {
+            loginEmail,
+            loginPassword,
+            loginRoleUI,
+        });
         toast({
           title: 'Login successful',
-          description: `Welcome back, ${loginEmail}!`,
+          description: `Welcome back, ${authUser.name}!`, // Use name from authUser
         });
         
-        // Navigate based on role
-        if (loginRole === 'teacher') {
+        // Navigate based on role from authUser
+        if (authUser.role === 'teacher') {
           navigate('/teacher/dashboard');
         } else {
           navigate('/dashboard');
@@ -68,64 +78,64 @@ export default function Index() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    if (!registerName || !registerEmail || !registerPassword) {
-      toast({
-        title: 'Registration failed',
-        description: 'Please fill in all required fields.',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-      return;
-    }
-    
-    try {
-      let profileImageDataUrl = null;
-      
-      if (profileImage) {
-        // Convert file to data URL for storage
-        const reader = new FileReader();
-        profileImageDataUrl = await new Promise<string>((resolve) => {
-          reader.onload = (e) => resolve(e.target?.result as string);
-          reader.readAsDataURL(profileImage);
-        });
-      }
-      
-      const success = await signup(
+    console.log('Registering with:', {
         registerName,
         registerEmail,
         registerPassword,
         registerRole,
-        profileImageDataUrl || undefined
-      );
-      
-      if (success) {
+        profileImage,
+    });
+    if (!registerName || !registerEmail || !registerPassword) {
         toast({
-          title: 'Registration successful',
-          description: 'Your account has been created.',
+            title: 'Registration failed',
+            description: 'Please fill in all required fields.',
+            variant: 'destructive',
         });
-        
-        // Navigate based on role
-        if (registerRole === 'teacher') {
-          navigate('/teacher/dashboard');
-        } else {
-          navigate('/dashboard');
+        setIsLoading(false);
+        return;
+    }
+
+    try {
+        let profileImageDataUrl = null;
+
+        if (profileImage) {
+            const reader = new FileReader();
+            profileImageDataUrl = await new Promise<string>((resolve) => {
+                reader.onload = (e) => resolve(e.target?.result as string);
+                reader.readAsDataURL(profileImage);
+            });
         }
-      } else {
-        toast({
-          title: 'Registration failed',
-          description: 'This email may already be registered.',
-          variant: 'destructive',
-        });
-      }
+        console.log('Profile Image Data URL:', profileImageDataUrl);
+        const success = await signup(
+            registerName,
+            registerEmail,
+            registerPassword,
+            registerRole, 
+            profileImageDataUrl || null
+        );
+        console.log('Registration success:', success);
+        if (success) {
+            toast({
+                title: 'Registration successful',
+                description: 'Your account has been created.',
+            });
+            navigate(registerRole === 'teacher' ? '/teacher/dashboard' : '/dashboard');
+        } else {
+            toast({
+                title: 'Registration failed',
+                description: 'This email may already be registered.',
+                variant: 'destructive',
+            });
+        }
     } catch (error) {
-      toast({
-        title: 'Registration error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
+        toast({
+            title: 'Registration error',
+            description: 'An unexpected error occurred. Please try again.',
+            variant: 'destructive',
+        });
     } finally {
-      setIsLoading(false);
+        console.log('Loading state:', isLoading);
+        setIsLoading(false);
     }
   };
   
@@ -180,26 +190,6 @@ export default function Index() {
                       required
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label>I am a</Label>
-                    <RadioGroup 
-                      defaultValue="student" 
-                      value={loginRole}
-                      onValueChange={(value) => setLoginRole(value as 'student' | 'teacher')}
-                      className="flex space-x-4"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="student" id="student-login" />
-                        <Label htmlFor="student-login">Student</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="teacher" id="teacher-login" />
-                        <Label htmlFor="teacher-login">Teacher</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-                  
                   <Button type="submit" className="w-full bg-gradient-main" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                   </Button>

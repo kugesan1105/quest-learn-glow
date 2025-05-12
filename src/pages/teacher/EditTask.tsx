@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
@@ -8,50 +7,87 @@ import { Card } from "@/components/ui/card";
 import { ChevronLeft } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
+interface TaskData {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  dueDate: string;
+  estimatedTime?: string;
+  instructions?: string;
+  isLocked: boolean;
+  isCompleted: boolean;
+}
+
 export default function EditTask() {
-  const { taskId } = useParams();
+  const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
-  const [task, setTask] = useState<any>(null);
+  const [task, setTask] = useState<TaskData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load tasks from localStorage
-    const storedTasks = localStorage.getItem("tasks");
-    if (storedTasks) {
-      const parsedTasks = JSON.parse(storedTasks);
-      const foundTask = parsedTasks.find((t: any) => t.id.toString() === taskId);
-      if (foundTask) {
-        setTask(foundTask);
+    const fetchTask = async () => {
+      if (!taskId) {
+        setIsLoading(false);
+        return;
       }
-    }
-    setIsLoading(false);
+      try {
+        const response = await fetch(`http://localhost:8000/tasks/${taskId}`); // Adjust URL
+        if (!response.ok) {
+          if (response.status === 404) {
+            setTask(null);
+          } else {
+            throw new Error("Failed to fetch task");
+          }
+        } else {
+          const data = await response.json();
+          setTask(data);
+        }
+      } catch (error) {
+        console.error("Error fetching task:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load task details.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTask();
   }, [taskId]);
 
-  const handleUpdateTask = (updatedTaskData: any) => {
-    // Get all tasks
-    const storedTasks = localStorage.getItem("tasks");
-    if (storedTasks) {
-      const parsedTasks = JSON.parse(storedTasks);
-      
-      // Find the task to update
-      const updatedTasks = parsedTasks.map((t: any) => {
-        if (t.id.toString() === taskId) {
-          return { ...t, ...updatedTaskData };
-        }
-        return t;
+  const handleUpdateTask = async (updatedTaskData: any) => {
+    if (!taskId) return;
+
+    try {
+      const response = await fetch(`http://localhost:8000/tasks/${taskId}`, { // Adjust URL
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedTaskData),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to update task");
+      }
       
-      // Save back to localStorage
-      localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-      
-      // Show success message
       toast({
         title: "Task updated",
         description: "The task has been updated successfully.",
       });
       
-      // Navigate back to task management
       navigate("/teacher/tasks");
+    } catch (error: any) {
+      console.error("Error updating task:", error);
+      toast({
+        title: "Error updating task",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
     }
   };
 

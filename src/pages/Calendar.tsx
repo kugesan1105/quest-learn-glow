@@ -1,30 +1,96 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Navbar } from "@/components/Navbar";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "@/components/ui/use-toast"; // Import toast for error notifications
+
+interface Task {
+  id: string;
+  title: string;
+  description: string;
+  videoUrl?: string;
+  dueDate: string; // This will be a string like "YYYY-MM-DD"
+  estimatedTime?: string;
+  instructions?: string;
+  isLocked: boolean;
+  isCompleted: boolean;
+}
+
+// Helper function to parse "YYYY-MM-DD" string to a local Date object at midnight
+function parseDueDate(dueDateString: string): Date | null {
+  console.log(' dueDateString ---> ', dueDateString);
+  if (!dueDateString || !/^\d{4}-\d{2}-\d{2}$/.test(dueDateString)) {
+    return null;
+  }
+  const parts = dueDateString.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1; // JavaScript months are 0-indexed
+  const day = parseInt(parts[2], 10);
+  
+  const date = new Date(year, month, day);
+  console.log(' date ---> ', date);
+  // Verify if the created date is valid (e.g., for inputs like "2023-02-30")
+  if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+    return null;
+  }
+  console.log(' date ---> ', date);
+  return date;
+}
 
 export default function CalendarPage() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const [allTasks, setAllTasks] = useState<Task[]>([]);
 
-  // Sample task due dates
-  const taskDueDates = [
-    { date: new Date(2025, 3, 15), title: "Introduction to Web Development" },
-    { date: new Date(2025, 3, 18), title: "Advanced CSS Techniques" },
-    { date: new Date(2025, 3, 20), title: "JavaScript Fundamentals" },
-    { date: new Date(2025, 3, 25), title: "Building Interactive UIs" },
-    { date: new Date(2025, 3, 30), title: "Introduction to React" },
-    { date: new Date(2025, 4, 5), title: "Building a Full-Stack App" },
-  ];
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/tasks"); // Adjust URL if needed
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks for calendar");
+        }
+        const data = await response.json();
+        setAllTasks(data);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        toast({
+          title: "Error",
+          description: "Could not fetch tasks for the calendar.",
+          variant: "destructive",
+        });
+      }
+    };
+    fetchTasks();
+  }, []);
 
-  // Find tasks due on the selected date
-  const selectedDateTasks = taskDueDates.filter(
-    (task) => 
-      date && 
-      task.date.getDate() === date.getDate() &&
-      task.date.getMonth() === date.getMonth() &&
-      task.date.getFullYear() === date.getFullYear()
+  // Derive taskDueDates from fetched tasks using the robust parser
+  const taskDueDates = allTasks
+    .map(task => {
+      const parsedDate = parseDueDate(task.dueDate);
+      if (!parsedDate) return null;
+      return {
+        date: parsedDate,
+        title: task.title,
+      };
+    })
+    .filter(task => task !== null) as { date: Date; title: string }[];
+
+  // Find tasks due on the selected date using the robust parser and comparison
+  const selectedDateTasks = allTasks.filter(
+    (task) => {
+      if (!date) return false;
+      const taskDueDate = parseDueDate(task.dueDate);
+      if (!taskDueDate) return false;
+
+      // Normalize the selected date from the calendar to midnight for accurate comparison
+      const selectedDayAtMidnight = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+      return (
+        taskDueDate.getFullYear() === selectedDayAtMidnight.getFullYear() &&
+        taskDueDate.getMonth() === selectedDayAtMidnight.getMonth() &&
+        taskDueDate.getDate() === selectedDayAtMidnight.getDate()
+      );
+    }
   );
 
   return (

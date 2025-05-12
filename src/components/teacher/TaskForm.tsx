@@ -1,11 +1,13 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DialogFooter } from "@/components/ui/dialog";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
 
 interface TaskFormProps {
   initialData?: {
@@ -22,15 +24,25 @@ interface TaskFormProps {
 }
 
 export function TaskForm({ initialData, onSubmit, onCancel, isEdit = false }: TaskFormProps) {
+  const initialDueDate = initialData?.dueDate
+    ? (() => {
+        const [year, month, day] = initialData.dueDate.split("-");
+        if (year && month && day) {
+          return new Date(Number(year), Number(month) - 1, Number(day));
+        }
+        return undefined;
+      })()
+    : undefined;
+
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
     description: initialData?.description || "",
     videoUrl: initialData?.videoUrl || "",
-    dueDate: initialData?.dueDate || "",
     estimatedTime: initialData?.estimatedTime || "",
     instructions: initialData?.instructions || "",
   });
-  
+  const [dueDate, setDueDate] = useState<Date | undefined>(initialDueDate);
+
   const [errors, setErrors] = useState({
     title: "",
     description: "",
@@ -41,10 +53,15 @@ export function TaskForm({ initialData, onSubmit, onCancel, isEdit = false }: Ta
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
-    // Clear error when field is updated
     if (errors[name as keyof typeof errors]) {
       setErrors(prev => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const handleDueDateChange = (date: Date | undefined) => {
+    setDueDate(date);
+    if (errors.dueDate) {
+      setErrors(prev => ({ ...prev, dueDate: "" }));
     }
   };
 
@@ -53,18 +70,22 @@ export function TaskForm({ initialData, onSubmit, onCancel, isEdit = false }: Ta
       title: formData.title.trim() === "" ? "Title is required" : "",
       description: formData.description.trim() === "" ? "Description is required" : "",
       videoUrl: formData.videoUrl.trim() === "" ? "Video URL is required" : "",
-      dueDate: formData.dueDate.trim() === "" ? "Due date is required" : "",
+      dueDate: !dueDate ? "Due date is required" : "",
     };
-    
     setErrors(newErrors);
     return Object.values(newErrors).every(error => error === "");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (validate()) {
-      onSubmit(formData);
+      const formattedDueDate = dueDate
+        ? `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`
+        : "";
+      onSubmit({
+        ...formData,
+        dueDate: formattedDueDate,
+      });
     }
   };
 
@@ -111,13 +132,26 @@ export function TaskForm({ initialData, onSubmit, onCancel, isEdit = false }: Ta
           
           <div className="space-y-2">
             <Label htmlFor="dueDate">Due Date</Label>
-            <Input
-              id="dueDate"
-              name="dueDate"
-              value={formData.dueDate}
-              onChange={handleChange}
-              placeholder="e.g., Apr 15, 2025"
-            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={`w-full justify-start text-left font-normal ${!dueDate ? "text-muted-foreground" : ""}`}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dueDate ? format(dueDate, "yyyy-MM-dd") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={dueDate}
+                  onSelect={handleDueDateChange}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
             {errors.dueDate && <p className="text-sm text-red-500">{errors.dueDate}</p>}
           </div>
         </div>
