@@ -8,10 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
 import { CheckCircle, ChevronLeft, Clock } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Task() {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Fetch user details from AuthContext
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -68,16 +70,12 @@ export default function Task() {
       return;
     }
 
-    const studentId = localStorage.getItem("userEmail") || "unknown_student@example.com";
-    const studentName = localStorage.getItem("userName") || "Unknown Student";
-    const studentImage = localStorage.getItem("userProfileImage") || undefined;
-
     const formData = new FormData();
     formData.append("file", selectedFile);
-    formData.append("student_id", studentId);
-    formData.append("student_name", studentName);
-    if (studentImage) {
-      formData.append("student_image", studentImage);
+    formData.append("student_id", user?.email || "unknown_student@example.com");
+    formData.append("student_name", user?.name || "Unknown Student");
+    if (user?.profileImage) {
+      formData.append("student_image", user.profileImage);
     }
     formData.append("task_title", task.title);
 

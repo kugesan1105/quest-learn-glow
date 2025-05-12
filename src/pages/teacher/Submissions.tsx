@@ -208,7 +208,7 @@ export default function Submissions() {
                                   <AvatarFallback>{submission.studentName.slice(0, 2)}</AvatarFallback>
                                 )}
                               </Avatar>
-                              <span>{submission.studentName}</span>
+                              <span>{submission.studentName || "Unknown Student"}</span>
                             </div>
                           </TableCell>
                           <TableCell>{submission.taskTitle}</TableCell>
@@ -277,7 +277,7 @@ export default function Submissions() {
                                   <AvatarFallback>{submission.studentName.slice(0, 2)}</AvatarFallback>
                                 )}
                               </Avatar>
-                              <span>{submission.studentName}</span>
+                              <span>{submission.studentName || "Unknown Student"}</span>
                             </div>
                           </TableCell>
                           <TableCell>{submission.taskTitle}</TableCell>
@@ -338,7 +338,7 @@ export default function Submissions() {
                                   <AvatarFallback>{submission.studentName.slice(0, 2)}</AvatarFallback>
                                 )}
                               </Avatar>
-                              <span>{submission.studentName}</span>
+                              <span>{submission.studentName || "Unknown Student"}</span>
                             </div>
                           </TableCell>
                           <TableCell>{submission.taskTitle}</TableCell>

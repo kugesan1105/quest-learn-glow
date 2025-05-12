@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import FileResponse
 from models import (
@@ -26,10 +26,6 @@ app.add_middleware(
 
 # Initialize submissions collection
 submissions_collection = db["submissions"]
-
-# Define upload directory
-UPLOAD_DIRECTORY = "uploads"
-os.makedirs(UPLOAD_DIRECTORY, exist_ok=True)
 
 # Helper function to convert MongoDB document to TaskResponse
 def task_helper(task) -> dict:
@@ -165,7 +161,7 @@ async def delete_task(task_id: str, request: Request):
     raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
 
 # Submission Endpoints
-@app.post("/tasks/{task_id}/submit")
+@app.post("/tasks/{task_id}/submit", response_model=SubmissionResponse)
 async def submit_task_assignment(
     task_id: str,
     student_id: str = Form(...),
@@ -180,14 +176,27 @@ async def submit_task_assignment(
     if not task:
         raise HTTPException(status_code=404, detail=f"Task with id {task_id} not found")
 
-    file_location = os.path.join(UPLOAD_DIRECTORY, file.filename)
-    try:
-        with open(file_location, "wb+") as file_object:
-            shutil.copyfileobj(file.file, file_object)
-        
-        file_size = os.path.getsize(file_location)
+    # Validate student details
+    student = users_collection.find_one({"email": student_id})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
 
-        submission_data = SubmissionCreate(
+    student_name = student["name"]
+    student_image = student.get("profileImage")
+
+    try:
+        file_content = await file.read()
+        file_size = len(file_content)
+
+        # Check if file size exceeds a reasonable limit (e.g., 15MB to be safe with 16MB BSON limit)
+        MAX_FILE_SIZE_MB = 15
+        if file_size > MAX_FILE_SIZE_MB * 1024 * 1024:
+            raise HTTPException(
+                status_code=413, 
+                detail=f"File size exceeds the limit of {MAX_FILE_SIZE_MB}MB."
+            )
+
+        submission_data_model = SubmissionCreate(
             taskId=task_id,
             taskTitle=task_title,
             studentId=student_id,
@@ -196,19 +205,27 @@ async def submit_task_assignment(
             submissionDate=datetime.utcnow(),
             fileName=file.filename,
             fileSize=file_size,
-            filePath=file_location,
+            fileData=file_content, # Store file content
             status="pending"
         )
         
-        result = submissions_collection.insert_one(submission_data.model_dump())
-        created_submission = submissions_collection.find_one({"_id": result.inserted_id})
-        if created_submission:
-            return submission_helper(created_submission)
+        # Use .model_dump() to get dict for MongoDB, ensure bytes are handled correctly
+        submission_dict = submission_data_model.model_dump()
+        
+        result = submissions_collection.insert_one(submission_dict)
+        created_submission_doc = submissions_collection.find_one({"_id": result.inserted_id})
+        
+        if created_submission_doc:
+            return submission_helper(created_submission_doc)
         raise HTTPException(status_code=500, detail="Failed to create submission record")
+    except HTTPException as http_exc: # Re-raise HTTPExceptions
+        raise http_exc
     except Exception as e:
-        if os.path.exists(file_location):
-            os.remove(file_location)
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+        # Log the exception for debugging
+        print(f"Error during submission: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"An error occurred during file submission: {str(e)}")
+    finally:
+        await file.close()
 
 @app.get("/submissions", response_model=List[SubmissionResponse])
 async def get_all_submissions(request: Request):
@@ -228,11 +245,17 @@ async def download_submission_file(submission_id: str, request: Request):
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     
-    file_path = submission.get("filePath")
-    if not file_path or not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="File not found on server")
+    file_data = submission.get("fileData")
+    file_name = submission.get("fileName")
+
+    if not file_data or not file_name:
+        raise HTTPException(status_code=404, detail="File data or name not found in submission record")
         
-    return FileResponse(path=file_path, filename=submission["fileName"], media_type='application/octet-stream')
+    return Response(
+        content=file_data, 
+        media_type='application/octet-stream', 
+        headers={"Content-Disposition": f"attachment; filename=\"{file_name}\""}
+    )
 
 @app.put("/submissions/{submission_id}/grade", response_model=SubmissionResponse)
 async def grade_submission(submission_id: str, submission_update: SubmissionUpdate, request: Request):

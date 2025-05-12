@@ -63,7 +63,7 @@ class SubmissionBase(BaseModel):
     submissionDate: datetime = Field(default_factory=datetime.utcnow)
     fileName: str
     fileSize: int # Store file size in bytes
-    filePath: str # Path on the server where the file is stored
+    fileData: Optional[bytes] = None # Store file content directly
     status: str = "pending"  # "pending", "graded"
     grade: Optional[str] = None
     feedback: Optional[str] = None
@@ -76,8 +76,19 @@ class SubmissionUpdate(BaseModel):
     grade: Optional[str] = None
     feedback: Optional[str] = None
 
-class SubmissionResponse(SubmissionBase):
+class SubmissionResponse(BaseModel): # Modified to not include fileData or filePath
     id: str
+    taskId: str
+    taskTitle: str
+    studentId: str
+    studentName: str
+    studentImage: Optional[str] = None
+    submissionDate: str # Keep as string for response consistency
+    fileName: str
+    fileSize: int
+    status: str
+    grade: Optional[str] = None
+    feedback: Optional[str] = None
 
 class SubmissionInDB(SubmissionBase):
     id: str = Field(alias="_id")
