@@ -18,9 +18,10 @@ export interface Task {
 interface TaskCardProps {
   task: Task;
   onClick?: () => void;
+  studentSubmissionStatus?: "pending" | "graded"; // Add this prop
 }
 
-export function TaskCard({ task, onClick }: TaskCardProps) {
+export function TaskCard({ task, onClick, studentSubmissionStatus }: TaskCardProps) {
   const navigate = useNavigate();
   const [isHovering, setIsHovering] = useState(false);
 
@@ -53,11 +54,11 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             <Video size={40} className="text-white" />
           )}
         </div>
-        {task.isCompleted && (
+        {task.isCompleted || studentSubmissionStatus === "graded" ? (
           <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center">
             ✓
           </div>
-        )}
+        ) : null}
       </div>
 
       <CardHeader className="pb-2">
@@ -87,10 +88,16 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               onClick={handleClick}
               className={cn(
                 "transition-all",
-                task.isCompleted ? "bg-green-500 hover:bg-green-600" : "btn-gradient"
+                task.isCompleted || studentSubmissionStatus === "graded"
+                  ? "bg-green-500 hover:bg-green-600"
+                  : "btn-gradient"
               )}
             >
-              {task.isCompleted ? "Review" : "Start"}
+              {task.isCompleted || studentSubmissionStatus === "graded"
+                ? "Completed"
+                : studentSubmissionStatus === "pending"
+                ? "Pending Review"
+                : "Start"}
             </Button>
           </>
         )}

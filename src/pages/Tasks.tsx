@@ -95,7 +95,7 @@ export default function Tasks() {
   const allProcessedTasks = processedTasks;
   const unlockedTasks = processedTasks.filter(task => !task.isLocked && task.studentSubmissionStatus !== 'graded');
   const lockedTasks = processedTasks.filter(task => task.isLocked && task.studentSubmissionStatus !== 'graded');
-  const completedTasks = processedTasks.filter(task => task.studentSubmissionStatus === 'graded');
+  const completedTasks = processedTasks.filter(task => task.isCompleted || task.studentSubmissionStatus === "graded");
   
   const renderTaskList = (taskList: Task[]) => {
     if (loadingTasks || loadingSubmissions) {
@@ -105,7 +105,11 @@ export default function Tasks() {
       return <p className="col-span-full text-center py-10 text-muted-foreground">No tasks in this category.</p>;
     }
     return taskList.map(task => (
-      <TaskCard key={task.id} task={task} studentSubmissionStatus={task.studentSubmissionStatus} />
+      <TaskCard
+        key={task.id}
+        task={task}
+        studentSubmissionStatus={task.studentSubmissionStatus} // Pass the status here
+      />
     ));
   };
 
