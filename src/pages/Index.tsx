@@ -41,6 +41,8 @@ export default function Index() {
       if (success && authUser) { // Check authUser after login success
         console.log('Login result:', authUser);
         localStorage.setItem('role', authUser.role);
+        localStorage.setItem('userName', authUser.name); // Store name in localStorage
+        localStorage.setItem('userEmail', authUser.email); // Store email in localStorage
         console.log('Logging in with:', {
             loginEmail,
             loginPassword,

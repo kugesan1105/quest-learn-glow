@@ -117,8 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
+    // Clear all user-related data from localStorage
     localStorage.removeItem('user');
-    localStorage.removeItem('token'); // Also remove token
+    localStorage.removeItem('token');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('role');
+    localStorage.removeItem('userProfileImage');
   };
 
   const isTeacher = user?.role === 'teacher';

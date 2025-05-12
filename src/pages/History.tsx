@@ -46,29 +46,6 @@ export default function History() {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Attempt to get student identifier (e.g., email) from localStorage
-    // This should match the 'studentId' field in the submission objects
-    const studentEmail = localStorage.getItem("userEmail");
-    if (studentEmail) {
-      setCurrentStudentId(studentEmail);
-    } else {
-      setError("Student identifier not found. Please log in again.");
-      setIsLoading(false);
-      toast({
-        title: "Authentication Error",
-        description: "Could not identify student. Please log in.",
-        variant: "destructive",
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!currentStudentId) {
-      // Don't fetch if studentId is not yet available or if there was an error getting it
-      if (error) setIsLoading(false); // Ensure loading stops if there was an early error
-      return;
-    }
-
     const fetchSubmissions = async () => {
       setIsLoading(true);
       setError(null);
@@ -78,11 +55,22 @@ export default function History() {
           throw new Error("Failed to fetch submissions");
         }
         const allSubmissions = await response.json() as Submission[];
-        // Filter submissions for the current student
-        const studentSubmissions = allSubmissions.filter(
-          (sub) => sub.studentId === currentStudentId
-        );
-        setSubmissions(studentSubmissions);
+
+        // Get student identifier from localStorage
+        const studentEmail = localStorage.getItem("userEmail");
+        console.log("Student email from localStorage:", studentEmail);
+        if (studentEmail) {
+          console.log("Student email from localStorage:", studentEmail);
+          setCurrentStudentId(studentEmail);
+          const studentSubmissions = allSubmissions.filter(
+            (sub) => sub.studentId === studentEmail
+          );
+          setSubmissions(studentSubmissions);
+        } else {
+          // If no student identifier is found, show an error
+          setSubmissions([]);
+          setError("Student identifier not found. Please log in again.");
+        }
       } catch (err) {
         console.error("Error fetching submissions:", err);
         const errorMessage = err instanceof Error ? err.message : "An unknown error occurred.";
@@ -98,7 +86,7 @@ export default function History() {
     };
 
     fetchSubmissions();
-  }, [currentStudentId]);
+  }, []);
 
   const handleViewDetails = (submission: Submission) => {
     setSelectedSubmission(submission);

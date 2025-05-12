@@ -26,6 +26,7 @@ export default function Dashboard() {
   }, []);
 
   const [tasks, setTasks] = useState<Task[]>([]); // Initialize with empty array
+  const [nextDeadlineTask, setNextDeadlineTask] = useState<Task | null>(null);
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -34,8 +35,14 @@ export default function Dashboard() {
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
         }
-        const data = await response.json();
+        const data: Task[] = await response.json();
         setTasks(data);
+
+        // Find the task with the nearest due date
+        const upcomingTask = data
+          .filter(task => !task.isCompleted && !task.isLocked && task.dueDate)
+          .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+        setNextDeadlineTask(upcomingTask || null);
       } catch (error) {
         console.error("Error fetching tasks:", error);
         // Optionally, set an error state and display a message to the user
@@ -96,10 +103,16 @@ export default function Dashboard() {
 
                 <div className="mt-8">
                   <h3 className="font-medium mb-2">Next Deadline</h3>
-                  <div className="bg-gradient-card text-white rounded-lg p-4">
-                    <div className="text-sm opacity-80">Due in 3 days</div>
-                    <div className="font-medium">Advanced CSS Techniques</div>
-                  </div>
+                  {nextDeadlineTask ? (
+                    <div className="bg-gradient-card text-white rounded-lg p-4">
+                      <div className="text-sm opacity-80">
+                        Due in {Math.ceil((new Date(nextDeadlineTask.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} days
+                      </div>
+                      <div className="font-medium">{nextDeadlineTask.title}</div>
+                    </div>
+                  ) : (
+                    <div className="text-muted-foreground">No upcoming deadlines</div>
+                  )}
                 </div>
               </CardContent>
             </Card>
