@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/ui/use-toast";
-import { CheckCircle, ChevronLeft, Clock, Eye, Trash2 } from "lucide-react";
+import { CheckCircle, ChevronLeft, Clock, Eye, Trash2, Hourglass } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { getYoutubeEmbedUrl } from "@/lib/utils";
 
@@ -16,7 +16,7 @@ export default function Task() {
   const navigate = useNavigate();
   const { user } = useAuth(); // Fetch user details from AuthContext
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmittedOrGraded, setIsSubmittedOrGraded] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [currentTask, setCurrentTask] = useState<any | null>(null);
   const [studentSubmission, setStudentSubmission] = useState<any | null>(null);
@@ -55,21 +55,26 @@ export default function Task() {
         const res = await fetch(`http://localhost:8000/submissions?taskId=${taskId}&studentId=${user.email}`);
         if (res.ok) {
           const data = await res.json();
-          setStudentSubmission(data.length > 0 ? data[0] : null);
-          // Mark as submitted if graded
-          if (data.length > 0) {
-            if (data[0].status === "graded") {
-              setIsSubmitted(true);
+          const submission = data.length > 0 ? data[0] : null;
+          setStudentSubmission(submission);
+          if (submission) {
+            if (submission.status === "graded") {
+              setIsSubmittedOrGraded(true);
+            } else {
+              setIsSubmittedOrGraded(false);
             }
+          } else {
+            setIsSubmittedOrGraded(false);
           }
         }
       } catch (e) {
         setStudentSubmission(null);
+        setIsSubmittedOrGraded(false);
       }
       setIsLoadingSubmission(false);
     };
     fetchSubmission();
-  }, [taskId, user?.email, isSubmitted]);
+  }, [taskId, user?.email, isSubmittedOrGraded]);
 
   // For this demo, we'll use mock data if currentTask is null
   const task = currentTask || {
@@ -85,7 +90,7 @@ export default function Task() {
 
   const handleFileSelect = (file: File) => {
     setSelectedFile(file);
-    setIsSubmitted(false);
+    setIsSubmittedOrGraded(false);
   };
 
   const handleSubmit = async () => {
@@ -111,7 +116,6 @@ export default function Task() {
       let url = `http://localhost:8000/tasks/${taskId}/submit`;
       let method = "POST";
       if (studentSubmission) {
-        // If already submitted, update/replace
         url = `http://localhost:8000/submissions/${studentSubmission.id}/replace`;
         method = "PUT";
       }
@@ -125,11 +129,17 @@ export default function Task() {
         throw new Error(errorData.detail || "File upload failed");
       }
 
-      setIsSubmitted(true);
+      setIsSubmittedOrGraded(true);
+      if (response.status !== 200 && studentSubmission?.status !== 'graded') {
+        setIsSubmittedOrGraded(false);
+      }
+      const submissionResult = await response.json();
+      setStudentSubmission(submissionResult);
+
       setShowConfetti(true);
 
       toast({
-        title: studentSubmission ? "Submission updated!" : "Task submitted!",
+        title: studentSubmission && studentSubmission.id && !selectedFile ? "Submission updated!" : "Task submitted!",
         description: "Your work has been submitted successfully.",
         variant: "default",
       });
@@ -157,7 +167,7 @@ export default function Task() {
       if (!res.ok) throw new Error("Failed to delete submission");
       setStudentSubmission(null);
       setSelectedFile(null);
-      setIsSubmitted(false);
+      setIsSubmittedOrGraded(false);
       toast({
         title: "Submission removed",
         description: "You can now upload a new submission.",
@@ -278,26 +288,26 @@ export default function Task() {
 
                 <FileUpload
                   onFileSelect={handleFileSelect}
-                  submitted={isSubmitted}
-                  disabled={studentSubmission && !selectedFile}
+                  submitted={isSubmittedOrGraded && studentSubmission?.status === 'graded'}
+                  disabled={studentSubmission?.status === 'graded' && !selectedFile}
                 />
 
                 <div className="mt-6 flex justify-end">
                   <Button
                     onClick={handleSubmit}
-                    className={isSubmitted ? "bg-green-500 hover:bg-green-600" : "btn-gradient"}
-                    disabled={isSubmitted || !selectedFile}
+                    className={studentSubmission?.status === 'graded' ? "bg-green-500 hover:bg-green-600" : "btn-gradient"}
+                    disabled={(studentSubmission?.status === 'graded' && !selectedFile) || (!selectedFile && !studentSubmission) || (!selectedFile && studentSubmission?.status === 'pending')}
                   >
-                    {studentSubmission
-                      ? "Update Submission"
-                      : isSubmitted
-                        ? (
-                          <span className="flex items-center gap-1">
-                            <CheckCircle size={16} />
-                            Submitted
-                          </span>
-                        )
-                        : "Submit Task"
+                    {studentSubmission?.status === 'graded'
+                      ? (
+                        <span className="flex items-center gap-1">
+                          <CheckCircle size={16} />
+                          Graded (Update?)
+                        </span>
+                      )
+                      : studentSubmission?.status === 'pending'
+                        ? selectedFile ? "Update Submission" : "Submission Pending"
+                        : selectedFile ? "Submit Task" : "Select a file"
                     }
                   </Button>
                 </div>
@@ -334,24 +344,39 @@ export default function Task() {
 
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isSubmitted ? "bg-green-500 text-white" : "bg-gray-200 text-gray-500"}`}>
-                          {isSubmitted ? "✓" : "3"}
+                        <div 
+                          className={`w-8 h-8 rounded-full flex items-center justify-center 
+                          ${studentSubmission?.status === 'graded' ? "bg-green-500 text-white" 
+                            : studentSubmission?.status === 'pending' ? "bg-yellow-400 text-white" 
+                            : "bg-gray-200 text-gray-500"}`}
+                        >
+                          {studentSubmission?.status === 'graded' ? <CheckCircle size={20} /> 
+                            : studentSubmission?.status === 'pending' ? <Hourglass size={18} /> 
+                            : "3"}
                         </div>
-                        <div className={`flex-1 w-px my-1 ${isSubmitted ? "bg-green-500" : "bg-gray-200"}`}></div>
+                        <div className={`flex-1 w-px my-1 ${studentSubmission?.status === 'graded' ? "bg-green-500" : studentSubmission?.status === 'pending' ? "bg-yellow-400" : "bg-gray-200"}`}></div>
                       </div>
                       <div>
                         <h3 className="font-medium">Submit Your Work</h3>
-                        <p className="text-sm text-muted-foreground">Upload your project file</p>
+                        <p className="text-sm text-muted-foreground">
+                          {studentSubmission?.status === 'graded' ? "Work submitted and graded" 
+                            : studentSubmission?.status === 'pending' ? "Work submitted, awaiting review"
+                            : "Upload your project file"}
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex">
                       <div className="flex flex-col items-center mr-4">
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-500">4</div>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-gray-500 ${studentSubmission?.status === 'graded' ? 'bg-green-500 text-white' : 'bg-gray-200'}`}>
+                           {studentSubmission?.status === 'graded' ? <CheckCircle size={20} /> : "4"}
+                        </div>
                       </div>
                       <div>
                         <h3 className="font-medium">Receive Feedback</h3>
-                        <p className="text-sm text-muted-foreground">Wait for instructor review</p>
+                        <p className="text-sm text-muted-foreground">
+                          {studentSubmission?.status === 'graded' ? "Feedback received" : "Wait for instructor review"}
+                        </p>
                       </div>
                     </div>
                   </div>
