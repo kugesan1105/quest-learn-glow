@@ -4,7 +4,7 @@ import { Navbar } from "@/components/Navbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PlusCircle, Users, FileText, CheckSquare } from "lucide-react";
+import { PlusCircle, Users, FileText } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Table,
@@ -37,7 +37,7 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await fetch("http://localhost:8000/tasks"); // Adjust URL if needed
+        const response = await fetch("http://localhost:8000/tasks");
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
         }
@@ -46,15 +46,23 @@ export default function TeacherDashboard() {
         console.log("Fetched tasks:", data);
       } catch (error) {
         console.error("Error fetching tasks:", error);
-        // Optionally, show an error toast to the user
+      }
+    };
+
+    const fetchStudents = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/users?role=student");
+        if (!response.ok) throw new Error("Failed to fetch students");
+        const data = await response.json();
+        setStudents(data);
+      } catch (error) {
+        setStudents([]);
       }
     };
 
     fetchTasks();
+    fetchStudents();
   }, []);
-
-  const completedTasks = tasks.filter(task => task.isCompleted).length;
-  const pendingSubmissions = submissions.filter(sub => sub.status === "Pending").length;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,14 +101,6 @@ export default function TeacherDashboard() {
                     <div className="bg-blue-light/20 rounded-lg p-4 text-center">
                       <div className="text-3xl font-bold text-blue">{students.length}</div>
                       <div className="text-xs text-muted-foreground">Students</div>
-                    </div>
-                    <div className="bg-green-100 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-green-600">{completedTasks}</div>
-                      <div className="text-xs text-muted-foreground">Completed Tasks</div>
-                    </div>
-                    <div className="bg-orange-100 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-orange-500">{pendingSubmissions}</div>
-                      <div className="text-xs text-muted-foreground">Pending Reviews</div>
                     </div>
                   </div>
                 </div>

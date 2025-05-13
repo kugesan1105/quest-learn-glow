@@ -27,16 +27,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+  // Helper to refresh user from localStorage
+  const refreshUserFromStorage = () => {
     const storedUser = localStorage.getItem('user');
     const token = localStorage.getItem('token');
-    if (storedUser && token) { // Ensure both user and token exist for a valid session
+    if (storedUser && token) {
       setUser(JSON.parse(storedUser));
     } else {
-      // If one is missing, clear both to be safe
+      setUser(null);
       localStorage.removeItem('user');
       localStorage.removeItem('token');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userProfileImage');
     }
+  };
+
+  useEffect(() => {
+    refreshUserFromStorage();
     setIsLoading(false);
   }, []);
 
@@ -52,7 +61,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (!response.ok) {
-        // Log error details from backend if available
         const errorData = await response.json().catch(() => ({ detail: "Login failed" }));
         console.error('Login failed:', errorData.detail);
         setIsLoading(false);
@@ -60,17 +68,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const data = await response.json();
-      // Backend returns: { token, profileImage, role, name }
       const loggedInUser: User = {
         name: data.name,
-        email: email, // email is known from input
+        email: email,
         profileImage: data.profileImage,
         role: data.role,
       };
 
       setUser(loggedInUser);
+      // Always update all user-related localStorage fields
       localStorage.setItem('user', JSON.stringify(loggedInUser));
       localStorage.setItem('token', data.token);
+      localStorage.setItem('role', data.role);
+      localStorage.setItem('userName', data.name);
+      localStorage.setItem('userEmail', email);
+      if (data.profileImage) {
+        localStorage.setItem('userProfileImage', data.profileImage);
+      } else {
+        localStorage.removeItem('userProfileImage');
+      }
       setIsLoading(false);
       return true;
     } catch (error) {
@@ -103,9 +119,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(false);
         return false;
       }
-      
-      // Backend returns: {"message": "Signup successful"}
-      // User will need to login separately after signup
       setIsLoading(false);
       return true;
     } catch (error) {

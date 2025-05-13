@@ -119,15 +119,6 @@ export default function Submissions() {
         );
         setFeedbackDialogOpen(false);
 
-        // Mark the task as completed for this student
-        await fetch(`http://localhost:8000/tasks/${selectedSubmission.taskId}/complete`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ studentId: selectedSubmission.studentId }),
-        });
-
         toast({
           title: "Feedback submitted",
           description: "The feedback has been saved successfully.",

@@ -54,7 +54,7 @@ export function TaskCard({ task, onClick, studentSubmissionStatus }: TaskCardPro
             <Video size={40} className="text-white" />
           )}
         </div>
-        {task.isCompleted || studentSubmissionStatus === "graded" ? (
+        {studentSubmissionStatus === "graded" ? (
           <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center">
             ✓
           </div>
@@ -88,12 +88,12 @@ export function TaskCard({ task, onClick, studentSubmissionStatus }: TaskCardPro
               onClick={handleClick}
               className={cn(
                 "transition-all",
-                task.isCompleted || studentSubmissionStatus === "graded"
+                studentSubmissionStatus === "graded"
                   ? "bg-green-500 hover:bg-green-600"
                   : "btn-gradient"
               )}
             >
-              {task.isCompleted || studentSubmissionStatus === "graded"
+              {studentSubmissionStatus === "graded"
                 ? "Completed"
                 : studentSubmissionStatus === "pending"
                 ? "Pending Review"

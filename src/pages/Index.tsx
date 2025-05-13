@@ -30,29 +30,22 @@ export default function Index() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    console.log('Logging in with:', {
-        loginEmail,
-        loginPassword,
-        loginRoleUI,
-    });
     try {
-      // Call login without role, backend determines role
       const success = await login(loginEmail, loginPassword); 
-      if (success && authUser) { // Check authUser after login success
-        console.log('Login result:', authUser);
+      if (success && authUser) {
+        // Always update localStorage with latest info
         localStorage.setItem('role', authUser.role);
-        localStorage.setItem('userName', authUser.name); // Store name in localStorage
-        localStorage.setItem('userEmail', authUser.email); // Store email in localStorage
-        console.log('Logging in with:', {
-            loginEmail,
-            loginPassword,
-            loginRoleUI,
-        });
+        localStorage.setItem('userName', authUser.name);
+        localStorage.setItem('userEmail', authUser.email);
+        if (authUser.profileImage) {
+          localStorage.setItem('userProfileImage', authUser.profileImage);
+        } else {
+          localStorage.removeItem('userProfileImage');
+        }
         toast({
           title: 'Login successful',
-          description: `Welcome back, ${authUser.name}!`, // Use name from authUser
+          description: `Welcome back, ${authUser.name}!`,
         });
-        
         // Navigate based on role from authUser
         if (authUser.role === 'teacher') {
           navigate('/teacher/dashboard');
@@ -115,13 +108,12 @@ export default function Index() {
             registerRole, 
             profileImageDataUrl || null
         );
-        console.log('Registration success:', success);
         if (success) {
             toast({
                 title: 'Registration successful',
-                description: 'Your account has been created.',
+                description: 'Your account has been created. Please log in.',
             });
-            navigate(registerRole === 'teacher' ? '/teacher/dashboard' : '/dashboard');
+            // Do not navigate automatically; let user login
         } else {
             toast({
                 title: 'Registration failed',

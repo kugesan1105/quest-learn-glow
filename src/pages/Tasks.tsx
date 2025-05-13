@@ -12,7 +12,6 @@ export interface Task {
   description: string;
   videoUrl?: string;
   isLocked: boolean;
-  isCompleted: boolean; // Global completion
   dueDate: string;
   estimatedTime?: string;
   instructions?: string;
@@ -95,7 +94,7 @@ export default function Tasks() {
   const allProcessedTasks = processedTasks;
   const unlockedTasks = processedTasks.filter(task => !task.isLocked && task.studentSubmissionStatus !== 'graded');
   const lockedTasks = processedTasks.filter(task => task.isLocked && task.studentSubmissionStatus !== 'graded');
-  const completedTasks = processedTasks.filter(task => task.isCompleted || task.studentSubmissionStatus === "graded");
+  const completedTasks = processedTasks.filter(task => task.studentSubmissionStatus === "graded");
   
   const renderTaskList = (taskList: Task[]) => {
     if (loadingTasks || loadingSubmissions) {

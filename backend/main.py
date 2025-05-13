@@ -339,15 +339,10 @@ async def grade_submission(submission_id: str, submission_update: SubmissionUpda
     
     updated_submission_doc = submissions_collection.find_one({"_id": ObjectId(submission_id)})
     
-    # Mark the task as completed for this student when graded
-    if updated_submission_doc and "status" in update_data and update_data["status"] == "graded":
-        task_id = updated_submission_doc.get("taskId")
-        if task_id and ObjectId.is_valid(task_id):
-            tasks_collection.update_one(
-                {"_id": ObjectId(task_id)},
-                {"$set": {"isCompleted": True}}
-            )
-    
+    # --- REMOVE GLOBAL isCompleted UPDATE ---
+    # Do NOT set isCompleted globally for the task here.
+    # Task completion is now per-student, tracked via submissions only.
+
     # Unlock next task if grade is A or B
     if updated_submission_doc and updated_submission_doc.get("grade") in ["A", "B"]:
         # Find the next locked task for the student and unlock it
@@ -365,3 +360,19 @@ async def grade_submission(submission_id: str, submission_update: SubmissionUpda
     if updated_submission_doc:
         return submission_helper(updated_submission_doc)
     raise HTTPException(status_code=500, detail="Failed to retrieve updated submission")
+
+@app.get("/users")
+async def get_users(role: Optional[str] = None):
+    query = {}
+    if role:
+        query["role"] = role
+    users = []
+    for user in users_collection.find(query):
+        users.append({
+            "id": str(user["_id"]),
+            "name": user["name"],
+            "email": user["email"],
+            "profileImage": user.get("profileImage"),
+            "role": user["role"]
+        })
+    return users

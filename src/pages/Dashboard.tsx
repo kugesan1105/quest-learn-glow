@@ -86,7 +86,7 @@ export default function Dashboard() {
   }, [user?.email]);
 
   const processedTasks = useMemo((): Task[] => {
-    if (loadingTasks || (user?.email && loadingSubmissions)) return []; // Wait if submissions are expected and loading
+    if (loadingTasks || (user?.email && loadingSubmissions)) return [];
     return tasks.map(task => {
       const submission = studentSubmissions.find(s => s.taskId === task.id);
       return {
@@ -105,11 +105,11 @@ export default function Dashboard() {
     }
   }, [processedTasks]);
 
-  const completedTasksCount = processedTasks.filter(task => task.isCompleted || task.studentSubmissionStatus === "graded").length;
+  const completedTasksCount = processedTasks.filter(task => task.studentSubmissionStatus === "graded").length;
   const totalTasks = processedTasks.length;
-  const upcomingTasks = processedTasks.filter(task => !task.isLocked && task.studentSubmissionStatus !== "graded" && !task.isCompleted);
-  const lockedTasks = processedTasks.filter(task => task.isLocked && task.studentSubmissionStatus !== "graded" && !task.isCompleted);
-  const completedTasksList = processedTasks.filter(task => task.isCompleted || task.studentSubmissionStatus === "graded");
+  const upcomingTasks = processedTasks.filter(task => !task.isLocked && task.studentSubmissionStatus !== "graded");
+  const lockedTasks = processedTasks.filter(task => task.isLocked && task.studentSubmissionStatus !== "graded");
+  const completedTasksList = processedTasks.filter(task => task.studentSubmissionStatus === "graded");
 
   const isLoading = loadingTasks || (user?.email && loadingSubmissions);
 

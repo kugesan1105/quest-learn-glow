@@ -154,7 +154,6 @@ export default function ManageTasks() {
                     <TableHead>Title</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -164,19 +163,6 @@ export default function ManageTasks() {
                       <TableCell className="font-medium">{task.title}</TableCell>
                       <TableCell className="max-w-xs truncate">{task.description}</TableCell>
                       <TableCell>{task.dueDate}</TableCell>
-                      <TableCell>
-                        <span 
-                          className={`px-2 py-1 text-xs rounded-full ${
-                            task.isLocked 
-                              ? 'bg-gray-100 text-gray-800' 
-                              : task.isCompleted
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-blue-100 text-blue-800'
-                          }`}
-                        >
-                          {task.isLocked ? "Locked" : task.isCompleted ? "Completed" : "Active"}
-                        </span>
-                      </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">
                           <Button
@@ -200,7 +186,7 @@ export default function ManageTasks() {
                   ))}
                   {tasks.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-10">
+                      <TableCell colSpan={4} className="text-center py-10">
                         <p className="text-muted-foreground">No tasks have been created yet</p>
                         <Button 
                           onClick={() => setIsAddDialogOpen(true)} 

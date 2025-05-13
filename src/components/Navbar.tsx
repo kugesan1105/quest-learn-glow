@@ -1,7 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Calendar, FileText, Home, ListCheck, Users, PlusCircle, CheckSquare } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Calendar, FileText, Home, ListCheck, CheckSquare } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -29,44 +29,10 @@ const NavItem = ({ icon, label, active, onClick }: NavItemProps) => {
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, isTeacher, logout } = useAuth();
 
-  const [userType, setUserType] = useState<'teacher' | 'student' | null>(() => {
-    return sessionStorage.getItem('userType') as 'teacher' | 'student' | null;
-  });
-
-  useEffect(() => {
-    let newType: 'teacher' | 'student' | null = userType;
-
-    if (location.pathname.includes('/teacher/')) {
-      newType = 'teacher';
-    } else if (location.pathname === '/') {
-      newType = null;
-    } else if (
-      location.pathname === '/dashboard' ||
-      location.pathname === '/tasks' ||
-      location.pathname.startsWith('/task/') ||
-      location.pathname === '/history'
-    ) {
-      newType = 'student';
-    }
-    // If on a shared path like /calendar, do NOT update newType (keep previous userType)
-
-    // Only update userType if not on a shared route
-    const isSharedRoute = location.pathname === '/calendar';
-    if (!isSharedRoute && newType !== userType) {
-      setUserType(newType);
-      if (newType) {
-        sessionStorage.setItem('userType', newType);
-      } else {
-        sessionStorage.removeItem('userType');
-      }
-    }
-  }, [location.pathname, userType]);
-
-  const isLoggedIn = location.pathname !== '/';
-  const isTeacher = userType === 'teacher';
-
-  if (!isLoggedIn) return null;
+  // Only show navbar if logged in
+  if (!user) return null;
 
   const studentNavItems = [
     {
@@ -145,7 +111,10 @@ export function Navbar() {
           <Button
             variant="outline"
             className="w-full mt-10"
-            onClick={() => navigate('/')}
+            onClick={() => {
+              logout();
+              navigate('/');
+            }}
           >
             Log Out
           </Button>
