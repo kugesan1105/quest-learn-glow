@@ -45,7 +45,7 @@ export default function ManageTasks() {
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await fetch("http://localhost:8000/tasks"); // Adjust URL if needed
+        const response = await fetch("{url}/tasks"); // Adjust URL if needed
         if (!response.ok) {
           throw new Error("Failed to fetch tasks");
         }
